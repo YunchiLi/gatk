@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.FisherExactTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -44,6 +45,7 @@ public final class FisherStrand extends StrandBiasTest implements StandardAnnota
 
     static final double MIN_PVALUE = 1E-320;
     private static final int MIN_COUNT = ARRAY_DIM;
+    private static final int MIN_QUAL_FOR_FILTERED_TEST = 17;
 
     // how large do we want the normalized table to be? (ie, sum of all entries must be smaller that this)
     private static final double TARGET_TABLE_SIZE = 200.0;
@@ -57,6 +59,14 @@ public final class FisherStrand extends StrandBiasTest implements StandardAnnota
     protected Map<String, Object> calculateAnnotationFromGTfield(final GenotypesContext genotypes){
         final int[][] tableFromPerSampleAnnotations = getTableFromSamples(genotypes, MIN_COUNT);
         return ( tableFromPerSampleAnnotations != null )? annotationForOneTable(pValueForContingencyTable(tableFromPerSampleAnnotations)) : null;
+    }
+
+    @Override
+    protected Map<String, Object> calculateAnnotationFromStratifiedContexts(final Map<String, List<PileupElement>> stratifiedContexts,
+                                                                            final VariantContext vc){
+        final int[][] tableNoFiltering = getSNPContingencyTable(stratifiedContexts, vc.getReference(), vc.getAlternateAlleles(), -1, MIN_COUNT);
+        final int[][] tableFiltering = getSNPContingencyTable(stratifiedContexts, vc.getReference(), vc.getAlternateAlleles(), MIN_QUAL_FOR_FILTERED_TEST, MIN_COUNT);
+        return annotationForOneTable(Math.max(pValueForContingencyTable(tableFiltering), pValueForContingencyTable(tableNoFiltering)));
     }
 
     @Override

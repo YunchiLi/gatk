@@ -172,7 +172,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         initializeActiveRegionEvaluationGenotyperEngine();
 
         if (annotationEngine == null) {
-            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.variantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps);
+            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.variantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps, emitReferenceConfidence());
 
         }
 

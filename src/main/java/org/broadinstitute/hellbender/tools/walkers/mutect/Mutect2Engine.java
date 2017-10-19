@@ -114,7 +114,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.variantAnnotationArgumentCollection,
                 MTAC.dbsnp.dbsnp,
-                MTAC.comps);
+                MTAC.comps,
+                false);
 
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);

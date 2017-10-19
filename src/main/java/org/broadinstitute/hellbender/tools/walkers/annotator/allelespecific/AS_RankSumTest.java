@@ -23,13 +23,6 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     public static final String RAW_DELIM = ",";
     public static final String REDUCED_DELIM = ",";
 
-    @Override
-    public Map<String, Object> annotate(final ReferenceContext ref,
-                                        final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods) {
-        return annotateRawData(ref, vc, likelihoods);
-    }
-
     /**
      * Generates an annotation by calling the client implementation of getElementForRead(GATKRead read) over each read
      * given its best assigned allele and returns the value of the allele as a double. This data gets condensed into a
@@ -45,7 +38,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     public Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                final VariantContext vc,
                                                final ReadLikelihoods<Allele> likelihoods ) {
-        if ( likelihoods == null) {
+        if ( likelihoods == null || !likelihoods.hasFilledLiklihoods()) {
             return Collections.emptyMap();
         }
 
@@ -112,12 +105,9 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
     // Generates as CompressedDataList over integer values over each read
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
-    public void calculateRawData(VariantContext vc, final ReadLikelihoods<Allele> likelihoods, ReducibleAnnotationData myData) {
+    private void calculateRawData(VariantContext vc, final ReadLikelihoods<Allele> likelihoods, ReducibleAnnotationData myData) {
         if( vc.getGenotypes().getSampleNames().size() != 1) {
             throw new IllegalStateException("Calculating raw data for allele-specific rank sums requires variant context input with exactly one sample, as in a gVCF.");
-        }
-        if(likelihoods == null) {
-            return;
         }
 
         final int refLoc = vc.getStart();
