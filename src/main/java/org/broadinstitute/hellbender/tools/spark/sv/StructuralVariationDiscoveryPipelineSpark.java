@@ -17,6 +17,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AssemblyContigAlignmentSignatureClassifier;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AssemblyContigWithFineTunedAlignments;
@@ -40,9 +42,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
 /**
  * Runs the structural variation discovery workflow on a single sample
