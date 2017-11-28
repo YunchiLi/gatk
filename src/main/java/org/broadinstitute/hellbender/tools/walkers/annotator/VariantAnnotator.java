@@ -172,13 +172,6 @@ public class VariantAnnotator extends VariantWalker {
     protected Boolean USE_ALL_ANNOTATIONS = false;
 
     /**
-     * Note that the --list argument requires a fully resolved and correct command-line to work. As an alternative,
-     * you can use ListAnnotations (see Help Utilities).
-     */
-    @Argument(fullName="list", shortName="ls", doc="List the available annotations and exit", optional=true)
-    protected Boolean LIST = false;
-
-    /**
      * By default, a dbSNP ID is added only when the ID field in the variant record is empty (not already annotated).
      * This argument allows you to override that behavior, and appends the new ID to the existing one. This is used
      * in conjunction with the -dbsnp argument.
@@ -200,15 +193,8 @@ public class VariantAnnotator extends VariantWalker {
      * Prepare the output file and the list of available features.
      */
     public void onTraversalStart() {
-        //TODO currently there is no way to list all of the GATK available annotations using the '-list' argument, in GATK3 this was accomplished
-        //TODO through a helper class, the barclay plugin refactor for annoations will probably accomplis this
-//        if ( LIST ) {
-//            AnnotationHelpUtils.listAnnotations();
-//            System.exit(0);
-//        }
-
         // get the list of all sample names from the variant VCF input rod, if applicable
-        final  List<String> samples = getHeaderForVariants().getGenotypeSamples(); // TODO right samples?
+        final  List<String> samples = getHeaderForVariants().getGenotypeSamples();
         variantSamples = new IndexedSampleList(samples);
 
         if ( USE_ALL_ANNOTATIONS ) {
@@ -216,14 +202,13 @@ public class VariantAnnotator extends VariantWalker {
         } else {
             annotatorEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(variantAnnotationArgumentCollection, dbsnp.dbsnp, comps, false);
         }
-        //TODO add expressions?
         annotatorEngine.addExpressions(expressionsToUse, resources, expressionAlleleConcordance );
 
         // setup the header fields
         // note that if any of the definitions conflict with our new ones, then we want to overwrite the old ones
         final Set<VCFHeaderLine> hInfo = new HashSet<>();
 
-        hInfo.addAll(annotatorEngine.getVCFAnnotationDescriptions(false)); //TODO allele specific annotations
+        hInfo.addAll(annotatorEngine.getVCFAnnotationDescriptions(false));
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
 
         // for the expressions, pull the info header line from the header of the resource rod
@@ -232,20 +217,13 @@ public class VariantAnnotator extends VariantWalker {
             if ( expression.fieldName.equals("ID") ) {
                 hInfo.add(new VCFInfoHeaderLine(expression.fullName, 1, VCFHeaderLineType.String, "ID field transferred from external VCF resource"));
             } else {
-                VCFInfoHeaderLine targetHeaderLine = null;
-                for (final VCFHeaderLine line : ((VCFHeader) getHeaderForFeatures(expression.binding)).getMetaDataInInputOrder()) {
-                    if (line instanceof VCFInfoHeaderLine) {
-                        final VCFInfoHeaderLine infoline = (VCFInfoHeaderLine) line;
-                        if (infoline.getID().equals(expression.fieldName)) {
-                            targetHeaderLine = infoline;
-                            expression.hInfo = targetHeaderLine;
-                            break;
-                        }
-                    }
-                }
+                final VCFInfoHeaderLine targetHeaderLine = ((VCFHeader) getHeaderForFeatures(expression.binding)).getInfoHeaderLines().stream()
+                            .filter(l -> l.getID().equals(expression.fieldName))
+                            .findFirst().orElse(null);
 
                 VCFInfoHeaderLine lineToAdd;
                 if (targetHeaderLine != null) {
+                    expression.hInfo = targetHeaderLine;
                     if (targetHeaderLine.getCountType() == VCFHeaderLineCount.INTEGER) {
                         lineToAdd = new VCFInfoHeaderLine(expression.fullName, targetHeaderLine.getCount(), targetHeaderLine.getType(), targetHeaderLine.getDescription());
                     } else {
