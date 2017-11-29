@@ -289,17 +289,5 @@ public class VariantAnnotator extends VariantWalker {
         vcfWriter.close();
         return null;
     }
-
-    //TODO need?
-    public final List<VCFHeader> getHeaderForResourceVariants() {
-        final List<VCFHeader> headers = Lists.newArrayList(getHeaderForVariants());
-
-        headers.addAll(resources.stream().map(this::getHeaderForFeatures).map(he -> {
-            if ( ! (he instanceof VCFHeader) ) {
-                throw new GATKException("Header for a resources file is not in VCF header format");
-             } else return (VCFHeader) he;
-        }).collect(Collectors.toList()));
-        return headers;
-    }
 }
 
