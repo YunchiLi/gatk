@@ -65,13 +65,6 @@ public class ReadPileup implements Iterable<PileupElement> {
         this(loc, new ArrayList<>());
     }
 
-//    /**
-//     * Create a new pileup of all the reads in a given genomic location
-//     */
-//    public ReadPileup( final List<GATKRead> reads, final Locatable loc) {
-//        this(loc, locToReadsPileup(reads, loc));
-//    }
-
     /**
      * Create a new pileup with the given reads.
      */

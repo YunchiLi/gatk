@@ -99,7 +99,6 @@ public final class AnnotationUtils {
         return read.getLength() - getNumClippedBasesAtStart(read) - getNumClippedBasesAtEnd(read);
     }
 
-
     /**
      *
      * @param read  a read containing the variant
@@ -131,5 +130,4 @@ public final class AnnotationUtils {
 
         return numEndClippedBases;
     }
-
 }

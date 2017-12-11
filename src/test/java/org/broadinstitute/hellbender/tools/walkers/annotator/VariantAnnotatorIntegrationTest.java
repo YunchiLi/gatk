@@ -7,38 +7,30 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
-import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
-import org.seqdoop.hadoop_bam.VCFFormat;
 import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import javax.validation.constraints.AssertFalse;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
-    final static String STANDARD_ANNOTATIONS = " -G StandardAnnotation "; //-G StandardUG ?
+    final static String STANDARD_ANNOTATIONS = " -G StandardAnnotation ";
     private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList(
             "QD",//TODO QD has a cap value and anything that reaches that is randomized.  It's difficult to reproduce the same random numbers across gatk3 -> 4
             "FS");//TODO There's some bug in either gatk3 or gatk4 fisherstrand that's making them not agree still, I'm not sure which is correct
-    private static final List<String> HEADER_LINES_TO_IGNROE = Arrays.asList(
+    private static final List<String> HEADER_LINES_TO_IGNORE = Arrays.asList(
             "reference",
             "HaplotypeScore",
             "GATKCommandLine.VariantAnnotator",
             "RAW_MQ"
     );
-
 
     //TODO because of differences between how GATK3 and GATK4 handle capturing reads for spanning deletions (Namely 3 only looks for reads overlapping the first site, 4 gets all reads over the span)
     //TODO then we want ot ignore affected attributes for concordance tests
@@ -119,7 +111,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         runCommandLine(args);
 
-        assertHeadersMatch(output, expected, HEADER_LINES_TO_IGNROE);
+        assertHeadersMatch(output, expected, HEADER_LINES_TO_IGNORE);
         final List<VariantContext> expectedVC = getVariantContexts(expected);
         final List<VariantContext> actualVC = getVariantContexts(output);
         assertForEachElementInLists(actualVC, expectedVC, assertion);
@@ -174,9 +166,8 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         assertVariantContextsMatch(getTestFile("HCOutput.NoAnnotations.vcf"), new File(getToolTestDataDir() + "expected/integrationTest.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam), b37_reference_20_21);
     }
 
-    //TODO these tests must be modernized :-(
     @Test
-    public void testHasAnnotsNotAsking1() throws IOException {
+    public void testHasAnnotsNotAsking() throws IOException {
         final File expected = new File(getToolTestDataDir() + "expected/testHsAnnotsNotAsking1.vcf");
         final VCFHeader header = getHeaderFromFile(expected);
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisample.vcf"), new File(getToolTestDataDir() + "expected/testHsAnnotsNotAsking1.vcf"), Arrays.asList( "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
@@ -190,7 +181,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testHasAnnotsAsking1() throws IOException {
+    public void testHasAnnotsAsking() throws IOException {
         final File expected = new File(getToolTestDataDir() + "expected/testHasAnnotsAsking1.vcf");
         final VCFHeader header = getHeaderFromFile(expected);
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisample.vcf"), new File(getToolTestDataDir() + "expected/testHasAnnotsAsking1.vcf"), Arrays.asList("-G", "Standard", "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
@@ -204,7 +195,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testNoAnnotsNotAsking1() throws IOException {
+    public void testNoAnnotsNotAsking() throws IOException {
         final File expected = new File(getToolTestDataDir() + "expected/testHsAnnotsNotAsking1.vcf");
         final VCFHeader header = getHeaderFromFile(expected);
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisampleempty.vcf"), new File(getToolTestDataDir() + "expected/testHasNoAnnotsNotAsking1.vcf"), Arrays.asList( "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
@@ -217,9 +208,8 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 b37_reference_20_21);
     }
 
-
     @Test
-    public void testNoAnnotsAsking1() throws IOException {
+    public void testNoAnnotsAsking() throws IOException {
         final File expected = new File(getToolTestDataDir() + "expected/testHasNoAnnotsAsking1.vcf");
         final VCFHeader header = getHeaderFromFile(expected);
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisampleempty.vcf"), new File(getToolTestDataDir() + "expected/testHasNoAnnotsAsking1.vcf"), Arrays.asList("-G", "Standard", "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
@@ -249,6 +239,16 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 getTestFile("expected/testDBTagWithHapMap.vcf"),
                 Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--comp", "H3:" + getToolTestDataDir() + "fakeHM3.vcf"),
                 b37_reference_20_21, Collections.emptyList());
+    }
+
+    // Specific results from this method have not been rigorously vetted, this test asserts that the annotations we expect are present (compared to gatk3 but not gatk3 output because of non-ported annotations )
+    @Test
+    public void testWithAllAnnotations() throws IOException {
+        assertVariantContextsMatch(getTestFile("HCOutput.NoAnnotations.vcf"),
+                getTestFile("expected/testWithAllAnnotations.vcf"),
+                //TODO remove the -AX here when https://github.com/broadinstitute/gatk/issues/3944 is resolved
+                Arrays.asList("--useAllAnnotations", "-AX", "ReferenceBases", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam),
+                 b37_reference_20_21);
     }
 
     @Test

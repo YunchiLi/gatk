@@ -18,7 +18,7 @@ import java.util.*;
 /**
  * Class of tests to detect strand bias.
  */
-public abstract class StrandBiasTest extends InfoFieldAnnotation implements Annotation {
+public abstract class StrandBiasTest extends InfoFieldAnnotation {
 
     protected static final int ARRAY_DIM = 2;
     protected static final int ARRAY_SIZE = ARRAY_DIM * ARRAY_DIM;
@@ -43,11 +43,11 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation implements Anno
         }
 
         if (likelihoods != null) {
-            if (vc.isSNP() && !likelihoods.hasFilledLiklihoods() && (likelihoods.readCount() != 0)) {
+            if (vc.isSNP() && !likelihoods.hasFilledLikelihoods() && (likelihoods.readCount() != 0)) {
                 return calculateAnnotationFromStratifiedContexts(likelihoods.getStratifiedPileups(vc), vc);
             }
 
-            if (likelihoods.hasFilledLiklihoods()) {
+            if (likelihoods.hasFilledLikelihoods()) {
                 return calculateAnnotationFromLikelihoods(likelihoods, vc);
             }
         }
@@ -239,13 +239,13 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation implements Anno
      *             fw      rc
      *   allele1   #       #
      *   allele2   #       #
-     * @return a 2x2 contingency table
+     * @return a 2x2 contingency table over SNP sites
      */
-    protected static int[][] getSNPContingencyTable(final Map<String, List<PileupElement>> stratifiedContexts,
-                                                    final Allele ref,
-                                                    final List<Allele> allAlts,
-                                                    final int minQScoreToConsider,
-                                                    final int minCount ) {
+    protected static int[][] getPileupContingencyTable(final Map<String, List<PileupElement>> stratifiedContexts,
+                                                       final Allele ref,
+                                                       final List<Allele> allAlts,
+                                                       final int minQScoreToConsider,
+                                                       final int minCount ) {
         int[][] table = new int[ARRAY_DIM][ARRAY_DIM];
 
         for (final Map.Entry<String, List<PileupElement>> sample : stratifiedContexts.entrySet() ) {

@@ -4,10 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -16,7 +13,6 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
@@ -65,7 +61,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         }
         final Map<String, Object> annotations = new HashMap<>();
         final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
-        getRMSDataFromLikelihoods(likelihoods, myData);;
+        getRMSDataFromLikelihoods(likelihoods, myData);
         final String annotationString = makeFinalizedAnnotationString(vc, myData.getAttributeMap());
         annotations.put(getKeyNames().get(0), annotationString);
         return annotations;
@@ -77,13 +73,13 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
                                                final VariantContext vc,
                                                final ReadLikelihoods<Allele> likelihoods ) {
         Utils.nonNull(vc);
-        if ( likelihoods == null || !likelihoods.hasFilledLiklihoods()) {
+        if ( likelihoods == null || !likelihoods.hasFilledLikelihoods()) {
             return Collections.emptyMap();
         }
 
         final Map<String, Object> annotations = new LinkedHashMap<>();
         final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
-        getRMSDataFromLikelihoods(likelihoods, myData);;
+        getRMSDataFromLikelihoods(likelihoods, myData);
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), myData.getAttributeMap());
         annotations.put(getRawKeyName(), annotationString);
         return annotations;

@@ -49,9 +49,9 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
     }
 
     /**
-     * Is this container expected to have the per-allele liklihoods calculations filled in.
+     * Is this container expected to have the per-allele likelihoods calculations filled in.
      */
-    public boolean hasFilledLiklihoods() {
+    public boolean hasFilledLikelihoods() {
         return false;
     }
 

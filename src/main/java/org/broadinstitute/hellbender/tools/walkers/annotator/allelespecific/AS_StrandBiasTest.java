@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
@@ -11,7 +10,6 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
@@ -62,7 +60,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
                                                final ReadLikelihoods<Allele> likelihoods ) {
 
         //for allele-specific annotations we only call from HC and we only use likelihoods
-        if ( likelihoods == null || !likelihoods.hasFilledLiklihoods()) {
+        if ( likelihoods == null || !likelihoods.hasFilledLikelihoods()) {
             return Collections.emptyMap();
         }
         // calculate the annotation from the likelihoods

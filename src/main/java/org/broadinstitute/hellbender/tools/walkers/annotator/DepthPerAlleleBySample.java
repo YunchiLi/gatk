@@ -58,8 +58,8 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         Utils.validateArg(likelihoods.alleles().containsAll(alleles), () -> "VC alleles " + alleles + " not a  subset of ReadLikelihoods alleles " + likelihoods.alleles());
 
         int[] counts;
-        if (likelihoods.hasFilledLiklihoods()) {
-            counts = annotateWithLiklihoods(vc, g, alleles, likelihoods);
+        if (likelihoods.hasFilledLikelihoods()) {
+            counts = annotateWithLikelihoods(vc, g, alleles, likelihoods);
         } else if (likelihoods.readCount()==0) {
             return;
         } else if (vc.isSNP()) {
@@ -92,7 +92,7 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         return counts;
     }
 
-    private int[] annotateWithLiklihoods(VariantContext vc, Genotype g, Set<Allele> alleles, ReadLikelihoods<Allele> likelihoods) {
+    private int[] annotateWithLikelihoods(VariantContext vc, Genotype g, Set<Allele> alleles, ReadLikelihoods<Allele> likelihoods) {
 
         final Map<Allele, Integer> alleleCounts = new LinkedHashMap<>();
         for ( final Allele allele : vc.getAlleles() ) {

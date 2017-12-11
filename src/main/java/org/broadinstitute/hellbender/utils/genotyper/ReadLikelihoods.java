@@ -96,7 +96,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
     /**
      * Is this container expected to have the per-allele liklihoods calculations filled in.
      */
-    public boolean hasFilledLiklihoods() {
+    public boolean hasFilledLikelihoods() {
         return true;
     }
 

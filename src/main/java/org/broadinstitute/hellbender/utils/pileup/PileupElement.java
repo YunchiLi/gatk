@@ -103,7 +103,6 @@ public final class PileupElement {
      */
     public static PileupElement createPileupForReadAndOffset(final GATKRead read, final Locatable loc) {
         Utils.nonNull(read, "read is null");
-       // Utils.validIndex(offset, read.getLength());TODO add a check that the loc is one based
 
         final AlignmentStateMachine stateMachine = new AlignmentStateMachine(read);
 

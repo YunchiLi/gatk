@@ -91,7 +91,7 @@ public final class DepthPerAlleleBySampleUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testEmptyLiklihoodsFallback(){
+    public void testEmptyLikelihoodsFallback(){
         final int dpDepth = 30;
         final Genotype gAC = new GenotypeBuilder(SAMPLE, ALLELES).DP(dpDepth).make();
 

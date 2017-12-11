@@ -180,12 +180,6 @@ public class VariantAnnotator extends VariantWalker {
     protected Boolean ALWAYS_APPEND_DBSNP_ID = false;
     public boolean alwaysAppendDbsnpId() { return ALWAYS_APPEND_DBSNP_ID; }
 
-    /**
-     * The genotype quality (GQ) threshold above which the mendelian violation ratio should be annotated.
-     */
-    @Argument(fullName="MendelViolationGenotypeQualityThreshold",shortName="mvq",optional=true,doc="GQ threshold for annotating MV ratio")
-    public double minGenotypeQualityP = 0.0;
-
     private VariantAnnotatorEngine annotatorEngine;
     private SampleList variantSamples;
 
@@ -193,7 +187,7 @@ public class VariantAnnotator extends VariantWalker {
      * Prepare the output file and the list of available features.
      */
     public void onTraversalStart() {
-        // get the list of all sample names from the variant VCF input rod, if applicable
+        // get the list of all sample names from the variant VCF, if applicable
         final  List<String> samples = getHeaderForVariants().getGenotypeSamples();
         variantSamples = new IndexedSampleList(samples);
 
@@ -211,7 +205,7 @@ public class VariantAnnotator extends VariantWalker {
         hInfo.addAll(annotatorEngine.getVCFAnnotationDescriptions(false));
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
 
-        // for the expressions, pull the info header line from the header of the resource rod
+        // for the expressions, pull the info header line from the header of the resource VCF
         for ( final VariantAnnotatorEngine.VAExpression expression : annotatorEngine.getRequestedExpressions() ) {
             // special case the ID field
             if ( expression.fieldName.equals("ID") ) {
@@ -231,6 +225,7 @@ public class VariantAnnotator extends VariantWalker {
                     }
                 } else {
                     lineToAdd = new VCFInfoHeaderLine(expression.fullName, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Value transferred from another external VCF resource");
+                    logger.warn(String.format("The requested expression attribute \"%s\" is missing from the header in its resource file %s",expression.fullName,expression.binding.getName()));
                 }
                 hInfo.add(lineToAdd);
                 expression.hInfo = lineToAdd;

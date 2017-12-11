@@ -5,8 +5,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_ReadPosRankSumTest;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -50,26 +48,12 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
         final int refLoc = vc.getStart();
 
         if( likelihoods != null) {
-            // Default to using the likelihoods to calculate the rank sum
-            if (likelihoods.hasFilledLiklihoods()) {
-                for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles()) {
-                    final GATKRead read = bestAllele.read;
-                    final Allele allele = bestAllele.allele;
-                    if (bestAllele.isInformative() && isUsableRead(read, refLoc)) {
-                        final OptionalDouble value = getElementForRead(read, refLoc, bestAllele);
-                        // Bypass read if the clipping goal is not reached or the refloc is inside a spanning deletion
-                        if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ) {
-                            if (allele.isReference()) {
-                                refQuals.add(value.getAsDouble());
-                            } else if (vc.hasAllele(allele)) {
-                                altQuals.add(value.getAsDouble());
-                            }
-                        }
-                    }
-                }
+            if (likelihoods.hasFilledLikelihoods()) {
+                // Default to using the likelihoods to calculate the rank sum
+                fillQualsFromLiklihood(vc, likelihoods, refQuals, altQuals, refLoc);
 
             // Use the pileup to stratify otherwise
-            } else if (!(this instanceof AS_RankSumTest)) {
+            } else {
                 for (final PileupElement p : likelihoods.getStratifiedPileups(vc).values().stream().flatMap(Collection::stream).collect(Collectors.toList())) {
                     final OptionalDouble value = getElementForPileupElement(p, refLoc);
                     if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ && isUsableBase(p)) {
@@ -98,6 +82,24 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
             return Collections.emptyMap();
         } else {
             return Collections.singletonMap(getKeyNames().get(0), String.format("%.3f", zScore));
+        }
+    }
+
+    protected void fillQualsFromLiklihood(VariantContext vc, ReadLikelihoods<Allele> likelihoods, List<Double> refQuals, List<Double> altQuals, int refLoc) {
+        for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles()) {
+            final GATKRead read = bestAllele.read;
+            final Allele allele = bestAllele.allele;
+            if (bestAllele.isInformative() && isUsableRead(read, refLoc)) {
+                final OptionalDouble value = getElementForRead(read, refLoc, bestAllele);
+                // Bypass read if the clipping goal is not reached or the refloc is inside a spanning deletion
+                if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ) {
+                    if (allele.isReference()) {
+                        refQuals.add(value.getAsDouble());
+                    } else if (vc.hasAllele(allele)) {
+                        altQuals.add(value.getAsDouble());
+                    }
+                }
+            }
         }
     }
 
