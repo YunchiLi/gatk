@@ -84,6 +84,14 @@ import java.util.stream.Collectors;
  *   --expression foo.FILTER
  * </pre>
  *
+ * <h3>Caveat</h3>
+ * <p>This tool will not output every annotation as many cannot be made without computing the per-read AlleleLikelihoods,
+ * which is generated in either the HaplotypeCaller or Mutect2. </p>
+ *
+ * <h3>Special note on RankSumTestAnnotations</h3>
+ * <p>RankSumAnnotations produced by this tool are not the same as those produced by the HaplotypeCaller. Without the
+ * likelihoods, the tool resorts to a pileup heuristic to categorize reads which means that RankSumAnnotations will only
+ * be present for SNP variants.</p>
  */
 @CommandLineProgramProperties(summary="Tool for adding annotations to VCF files",
         oneLineSummary = "Tool for adding annotations to VCF files",
