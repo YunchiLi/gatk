@@ -394,11 +394,11 @@ public final class GenomicsDBImport extends GATKTool {
             final LinkedHashMap<String, Path> sampleToFilename = new LinkedHashMap<>();
             for ( final String line : lines) {
                 final String[] split = line.split("\\t",-1);
-                if (split.length != 2
-                        || split[0].isEmpty() || containsWhitespace(split[0])
-                        || split[1].isEmpty() || containsWhitespace(split[1])) {
+                if (split.length != 2)
                     throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: " + line);
-                }
+                if(split[0].trim().isEmpty()
+                        || split[1].trim().isEmpty())
+                    throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: " + line);
 
                 final String sample = split[0];
                 final String path = split[1];
@@ -499,8 +499,10 @@ public final class GenomicsDBImport extends GATKTool {
             final long variantContextBufferSize = vcfBufferSizePerSample * sampleToReaderMap.size();
             final GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
                     createImportConfiguration(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                            GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME,variantContextBufferSize, segmentSize,
-                            i, (i+updatedBatchSize-1));
+                            GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME,
+                            variantContextBufferSize, segmentSize,
+                            i, (i+updatedBatchSize-1),
+                            (batchCount == 1)); //Fail if array exists and this is the first batch
 
             try {
                 importer = new GenomicsDBImporter(sampleToReaderMap, mergedHeaderLines, intervals.get(0), validateSampleToReaderMap, importConfiguration);
@@ -639,7 +641,8 @@ public final class GenomicsDBImport extends GATKTool {
         final long variantContextBufferSize,
         final long segmentSize,
         final long lbSampleIndex,
-        final long ubSampleIndex) {
+        final long ubSampleIndex,
+        final boolean failIfArrayExists) {
 
         final GenomicsDBImportConfiguration.Partition.Builder pBuilder =
             GenomicsDBImportConfiguration.Partition.newBuilder();
@@ -670,6 +673,7 @@ public final class GenomicsDBImport extends GATKTool {
                 .setGatk4IntegrationParameters(gatk4Parameters)
                 .setSizePerColumnPartition(variantContextBufferSize)
                 .setSegmentSize(segmentSize)
+                .setFailIfUpdating(failIfArrayExists)
                 .build();
     }
 
