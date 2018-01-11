@@ -241,9 +241,8 @@ public class VariantAnnotator extends VariantWalker {
 
         // TODO ask reviewer, VCFUtils.withUpdatedContigs is what GATK3 calls into, it isn't used anywhere in 4 though so should it be used here?
         VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
-        referenceArguments.getReferencePath()
         vcfWriter = createVCFWriter(outputFile);
-        vcfWriter.writeHeader(VCFUtils.withUpdatedContigs(vcfHeader, referenceArguments.(), referenceArguments.getReferenceFile()==null ? getBestAvailableSequenceDictionary(): getReferenceDictionary()));
+        vcfWriter.writeHeader(VCFUtils.withUpdatedContigs(vcfHeader, hasReference()? new File(referenceArguments.getReferenceFileName()): null, referenceArguments.getReferencePath()==null ? getBestAvailableSequenceDictionary(): getReferenceDictionary()));
     }
 
     /**
