@@ -10,19 +10,20 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * A helper struct for annotating complications that make the locations represented by its associated
@@ -63,6 +64,39 @@ public final class BreakpointComplications {
     /** The uncertainty in location due to complications. */
     public int getLength() {
         return homologyForwardStrandRep.length();
+    }
+
+    public Map<String, Object> toVariantAttributes() {
+
+        final Map<String, Object> attributeMap = new HashMap<>();
+
+        if (!getInsertedSequenceForwardStrandRep().isEmpty()) {
+            attributeMap.put(GATKSVVCFConstants.INSERTED_SEQUENCE, getInsertedSequenceForwardStrandRep());
+        }
+
+        if (!getHomologyForwardStrandRep().isEmpty()) {
+            attributeMap.put(GATKSVVCFConstants.HOMOLOGY, getHomologyForwardStrandRep());
+            attributeMap.put(GATKSVVCFConstants.HOMOLOGY_LENGTH, getHomologyForwardStrandRep().length());
+        }
+
+        if (hasDuplicationAnnotation()) {
+            attributeMap.put(GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, getDupSeqRepeatUnitRefSpan().toString());
+            if (!getCigarStringsForDupSeqOnCtg().isEmpty()) {
+                attributeMap.put(GATKSVVCFConstants.DUP_SEQ_CIGARS,
+                        StringUtils.join(getCigarStringsForDupSeqOnCtg(), VCFConstants.INFO_FIELD_ARRAY_SEPARATOR));
+            }
+            attributeMap.put(GATKSVVCFConstants.DUPLICATION_NUMBERS,
+                    new int[]{getDupSeqRepeatNumOnRef(), getDupSeqRepeatNumOnCtg()});
+            if (isDupAnnotIsFromOptimization()) {
+                attributeMap.put(GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, "");
+            }
+
+            if (getDupSeqStrandOnCtg() != null) {
+                attributeMap.put(GATKSVVCFConstants.DUP_INV_ORIENTATIONS,
+                        getDupSeqStrandOnCtg().stream().map(Strand::toString).collect(Collectors.joining()));
+            }
+        }
+        return attributeMap;
     }
 
     /**

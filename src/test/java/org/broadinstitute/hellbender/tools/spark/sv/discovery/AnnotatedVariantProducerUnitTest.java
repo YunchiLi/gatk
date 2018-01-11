@@ -142,7 +142,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final VariantContext variantContext =
                 AnnotatedVariantProducer.produceAnnotatedVcFromInferredTypeAndRefLocations(breakpoints.leftJustifiedLeftRefLoc,
-                        breakpoints.leftJustifiedRightRefLoc.getStart(), breakpoints.complication, InsDelVariantDetector.inferFromNovelAdjacency(breakpoints),
+                        breakpoints.leftJustifiedRightRefLoc.getStart(), breakpoints.complication, InsDelVariantDetector.inferTypeFromNovelAdjacency(breakpoints),
                         null, evidence, SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.reference),
                         SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.seqDict), null, sampleId);
 

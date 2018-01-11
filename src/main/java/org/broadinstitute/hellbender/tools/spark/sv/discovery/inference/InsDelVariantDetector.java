@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedC
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
@@ -114,8 +113,20 @@ public final class InsDelVariantDetector implements VariantDetectorFromLocalAsse
                 discoverStageArgs, toolLogger);
 
         List<VariantContext> annotatedVariants =
-                inferTypeAndAnnotateByAlignmentSignatures(narlsAndSources, cnvCallsBroadcast, sampleId,
-                        referenceBroadcast, referenceSequenceDictionaryBroadcast);
+                narlsAndSources
+                        .mapToPair(noveltyAndEvidence -> new Tuple2<>(noveltyAndEvidence._1,
+                                new Tuple2<>(inferTypeFromNovelAdjacency(noveltyAndEvidence._1), noveltyAndEvidence._2)))       // type inference based on novel adjacency and evidence alignments
+                        .map(noveltyTypeAndEvidence ->
+                                annotateVariant(                                                                                // annotate the novel adjacency and inferred type
+                                        noveltyTypeAndEvidence._1,
+                                        noveltyTypeAndEvidence._2._1,
+                                        null,
+                                        noveltyTypeAndEvidence._2._2,
+                                        referenceBroadcast,
+                                        referenceSequenceDictionaryBroadcast,
+                                        cnvCallsBroadcast,
+                                        sampleId))
+                        .collect();
 
         narlsAndSources.unpersist();
 
@@ -124,53 +135,14 @@ public final class InsDelVariantDetector implements VariantDetectorFromLocalAsse
 
     //==================================================================================================================
 
-    /**
-     * Given contig alignments, emit novel adjacency not present on the reference to which the locally-assembled contigs were aligned.
-     */
     private static Iterator<Tuple2<NovelAdjacencyReferenceLocations, ChimericAlignment>>
     discoverNovelAdjacencyFromChimericAlignments(final Tuple2<byte[], List<ChimericAlignment>> tigSeqAndChimeras, final SAMSequenceDictionary referenceDictionary) {
         return Utils.stream(tigSeqAndChimeras._2)
                 .map(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca, tigSeqAndChimeras._1, referenceDictionary), ca)).iterator();
     }
 
-
-    // TODO: 1/10/18 to be deprecated
-    private static List<VariantContext> inferTypeAndAnnotateByAlignmentSignatures(final JavaPairRDD<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> narlsAndSources,
-                                                                                  final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
-                                                                                  final String sampleId,
-                                                                                  final Broadcast<ReferenceMultiSource> referenceBroadcast,
-                                                                                  final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast) {
-
-        return narlsAndSources
-                .mapToPair(noveltyAndEvidence -> inferType(noveltyAndEvidence._1, noveltyAndEvidence._2))                     // type inference based on novel adjacency and evidence alignments
-                .map(noveltyTypeAndEvidence ->
-                        annotateVariant(                                                                                      // annotate the novel adjacency and inferred type
-                                noveltyTypeAndEvidence._1,
-                                noveltyTypeAndEvidence._2._1,
-                                null,
-                                noveltyTypeAndEvidence._2._2,
-                                referenceBroadcast,
-                                referenceSequenceDictionaryBroadcast,
-                                cnvCallsBroadcast,
-                                sampleId))
-                .collect();
-    }
-
-    /**
-     * Given input novel adjacency and evidence chimeric alignments, infer type of variant.
-     */
-    private static Tuple2<NovelAdjacencyReferenceLocations, Tuple2<SvType, Iterable<ChimericAlignment>>> inferType(
-            final NovelAdjacencyReferenceLocations novelAdjacency,
-            final Iterable<ChimericAlignment> chimericAlignments) {
-        return new Tuple2<>(novelAdjacency,
-                new Tuple2<>(inferFromNovelAdjacency(novelAdjacency), chimericAlignments));
-    }
-
-    /**
-     * @return inferred type of variant (as listed in {@link SvType}) based on input {@link NovelAdjacencyReferenceLocations}.
-     */
     @VisibleForTesting
-    public static SimpleSVType inferFromNovelAdjacency(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
+    public static SimpleSVType inferTypeFromNovelAdjacency(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
 
         final int start = novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd();
         final int end = novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
@@ -227,10 +199,6 @@ public final class InsDelVariantDetector implements VariantDetectorFromLocalAsse
         return type;
     }
 
-
-    /**
-     * Produces annotated variant as described in {@link GATKSVVCFHeaderLines}, given input arguments.
-     */
     static VariantContext annotateVariant(final NovelAdjacencyReferenceLocations novelAdjacency,
                                           final SvType inferredType,
                                           final byte[] altHaplotypeSeq,
@@ -246,5 +214,4 @@ public final class InsDelVariantDetector implements VariantDetectorFromLocalAsse
                         inferredType, altHaplotypeSeq, chimericAlignments,
                         broadcastReference, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
     }
-
 }

@@ -111,7 +111,7 @@ public class AnnotatedVariantProducer implements Serializable {
 
         // attributes from complications
         inferredType.getTypeSpecificAttributes().forEach(vcBuilder::attribute);
-        parseComplicationsAndMakeThemAttributeMap(breakpointComplications).forEach(vcBuilder::attribute);
+        breakpointComplications.toVariantAttributes().forEach(vcBuilder::attribute);
 
         // evidence used for producing the novel adjacency
         getEvidenceRelatedAnnotations(contigAlignments).forEach(vcBuilder::attribute);
@@ -200,43 +200,6 @@ public class AnnotatedVariantProducer implements Serializable {
         final byte[] refBases = reference.getReferenceBases(refLoc).getBases();
 
         return new ArrayList<>(Arrays.asList(Allele.create(new String(refBases), true), SvType.getAltAllele()));
-    }
-
-    /**
-     * Not testing this because the complications are already tested in the NovelAdjacencyReferenceLocations class' own test,
-     * more testing here would be actually testing VCBuilder.
-     */
-    private static Map<String, Object> parseComplicationsAndMakeThemAttributeMap(final BreakpointComplications breakpointComplications) {
-
-        final Map<String, Object> attributeMap = new HashMap<>();
-
-        if (!breakpointComplications.getInsertedSequenceForwardStrandRep().isEmpty()) {
-            attributeMap.put(GATKSVVCFConstants.INSERTED_SEQUENCE, breakpointComplications.getInsertedSequenceForwardStrandRep());
-        }
-
-        if (!breakpointComplications.getHomologyForwardStrandRep().isEmpty()) {
-            attributeMap.put(GATKSVVCFConstants.HOMOLOGY, breakpointComplications.getHomologyForwardStrandRep());
-            attributeMap.put(GATKSVVCFConstants.HOMOLOGY_LENGTH, breakpointComplications.getHomologyForwardStrandRep().length());
-        }
-
-        if (breakpointComplications.hasDuplicationAnnotation()) {
-            attributeMap.put(GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, breakpointComplications.getDupSeqRepeatUnitRefSpan().toString());
-            if (!breakpointComplications.getCigarStringsForDupSeqOnCtg().isEmpty()) {
-                attributeMap.put(GATKSVVCFConstants.DUP_SEQ_CIGARS,
-                        StringUtils.join(breakpointComplications.getCigarStringsForDupSeqOnCtg(), VCFConstants.INFO_FIELD_ARRAY_SEPARATOR));
-            }
-            attributeMap.put(GATKSVVCFConstants.DUPLICATION_NUMBERS,
-                    new int[]{breakpointComplications.getDupSeqRepeatNumOnRef(), breakpointComplications.getDupSeqRepeatNumOnCtg()});
-            if (breakpointComplications.isDupAnnotIsFromOptimization()) {
-                attributeMap.put(GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, "");
-            }
-
-            if (breakpointComplications.getDupSeqStrandOnCtg() != null) {
-                attributeMap.put(GATKSVVCFConstants.DUP_INV_ORIENTATIONS,
-                        breakpointComplications.getDupSeqStrandOnCtg().stream().map(Strand::toString).collect(Collectors.joining()));
-            }
-        }
-        return attributeMap;
     }
 
     public static VariantContext annotateWithImpreciseEvidenceLinks(final VariantContext variant,

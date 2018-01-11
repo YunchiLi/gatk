@@ -31,7 +31,7 @@ public class SvSimpleTypeInferenceUnitTest extends GATKBaseTest {
                                                    final String expectedTypeString,
                                                    final Set<String> expectedFlags) {
 
-        final SvType variant = InsDelVariantDetector.inferFromNovelAdjacency(breakpoints);
+        final SvType variant = InsDelVariantDetector.inferTypeFromNovelAdjacency(breakpoints);
         Assert.assertEquals(variant.toString(), expectedTypeString);
 
         final Set<String> flags = variant.getTypeSpecificAttributes().keySet();
