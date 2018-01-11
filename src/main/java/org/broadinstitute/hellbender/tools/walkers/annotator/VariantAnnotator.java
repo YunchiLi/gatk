@@ -12,17 +12,16 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
 import java.io.File;
 import java.util.*;
@@ -95,7 +94,7 @@ import java.util.stream.Collectors;
  */
 @CommandLineProgramProperties(summary="Tool for adding annotations to VCF files",
         oneLineSummary = "Tool for adding annotations to VCF files",
-        programGroup = VariantProgramGroup.class)
+        programGroup = VariantManipulationProgramGroup.class)
 
 public class VariantAnnotator extends VariantWalker {
     private VariantContextWriter vcfWriter;
@@ -242,8 +241,9 @@ public class VariantAnnotator extends VariantWalker {
 
         // TODO ask reviewer, VCFUtils.withUpdatedContigs is what GATK3 calls into, it isn't used anywhere in 4 though so should it be used here?
         VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
+        referenceArguments.getReferencePath()
         vcfWriter = createVCFWriter(outputFile);
-        vcfWriter.writeHeader(VCFUtils.withUpdatedContigs(vcfHeader, referenceArguments.getReferenceFile(), referenceArguments.getReferenceFile()==null ? getBestAvailableSequenceDictionary(): getReferenceDictionary()));
+        vcfWriter.writeHeader(VCFUtils.withUpdatedContigs(vcfHeader, referenceArguments.(), referenceArguments.getReferenceFile()==null ? getBestAvailableSequenceDictionary(): getReferenceDictionary()));
     }
 
     /**
