@@ -1,0 +1,104 @@
+\documentclass[nofootinbib,amssymb,amsmath]{revtex4}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{mathrsfs}
+
+%Put an averaged random variable between brackets
+\DeclareMathOperator*{\argmax}{\arg\!\max}
+\newcommand{\ave}[1]{\left\langle #1 \right\rangle}
+
+\newcommand{\vzero}{{\bf 0}}
+\newcommand{\vI}{{\bf I}}
+\newcommand{\vb}{{\bf b}}
+\newcommand{\vd}{{\bf d}}
+\newcommand{\vc}{{\bf c}}
+\newcommand{\vv}{{\bf v}}
+\newcommand{\vz}{{\bf z}}
+\newcommand{\vn}{{\bf n}}
+\newcommand{\vm}{{\bf m}}
+\newcommand{\vG}{{\bf G}}
+\newcommand{\vQ}{{\bf Q}}
+\newcommand{\vM}{{\bf M}}
+\newcommand{\vW}{{\bf W}}
+\newcommand{\vX}{{\bf X}}
+\newcommand{\vF}{{\bf F}}
+\newcommand{\vZ}{{\bf Z}}
+
+\newcommand{\vPsi}{{\bf \Psi}}
+\newcommand{\vSigma}{{\bf \Sigma}}
+\newcommand{\vlambda}{{\bf \lambda}}
+\newcommand{\vLambda}{{\bf \Lambda}}
+\newcommand{\vA}{{\bf A}}
+\newcommand{\MM}{M}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\norm}{{\mathcal N}}
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+
+\def\SL#1{{\color [rgb]{0,0,0.8} [SL: #1]}}
+\def\DB#1{{\color [rgb]{0,0.8,0} [DB: #1]}}
+
+\newcommand{\HOM}{$\mathsf{Hom}$}
+\newcommand{\HET}{$\mathsf{Het}$}
+\newcommand{\REF}{$\mathsf{Ref}$}
+\newcommand{\epss}{\varepsilon}
+
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+\makeatletter
+\DeclareFontFamily{OMX}{MnSymbolE}{}
+\DeclareSymbolFont{MnLargeSymbols}{OMX}{MnSymbolE}{m}{n}
+\SetSymbolFont{MnLargeSymbols}{bold}{OMX}{MnSymbolE}{b}{n}
+\DeclareFontShape{OMX}{MnSymbolE}{m}{n}{
+    <-6>  MnSymbolE5
+   <6-7>  MnSymbolE6
+   <7-8>  MnSymbolE7
+   <8-9>  MnSymbolE8
+   <9-10> MnSymbolE9
+  <10-12> MnSymbolE10
+  <12->   MnSymbolE12
+}{}
+\DeclareFontShape{OMX}{MnSymbolE}{b}{n}{
+    <-6>  MnSymbolE-Bold5
+   <6-7>  MnSymbolE-Bold6
+   <7-8>  MnSymbolE-Bold7
+   <8-9>  MnSymbolE-Bold8
+   <9-10> MnSymbolE-Bold9
+  <10-12> MnSymbolE-Bold10
+  <12->   MnSymbolE-Bold12
+}{}
+
+\let\llangle\@undefined
+\let\rrangle\@undefined
+\DeclareMathDelimiter{\llangle}{\mathopen}%
+                     {MnLargeSymbols}{'164}{MnLargeSymbols}{'164}
+\DeclareMathDelimiter{\rrangle}{\mathclose}%
+                     {MnLargeSymbols}{'171}{MnLargeSymbols}{'171}
+\makeatother
+
+\begin{document}
+
+\title{GATK gCNV Technical Documentation}
+
+\author{GATK CNV Team}
+
+\date{\today}
+
+\begin{abstract}
+todo.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+todo.
+
+\end{document}
