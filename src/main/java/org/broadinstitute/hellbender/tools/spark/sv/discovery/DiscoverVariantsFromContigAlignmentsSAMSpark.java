@@ -117,24 +117,24 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final SvDiscoveryDataBundle svDiscoveryDataBundle =
-                new SvDiscoveryDataBundle(ctx, discoverStageArgs, vcfOutputFileName, null, null,
+        final SvDiscoveryInputData svDiscoveryInputData =
+                new SvDiscoveryInputData(ctx, discoverStageArgs, vcfOutputFileName, null, null,
                         null,
                         getReads(), getHeaderForReads(), getReference(), localLogger);
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
-                new SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser(svDiscoveryDataBundle.assemblyRawAlignments, svDiscoveryDataBundle.headerBroadcast.getValue(), true)
+                new SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser(svDiscoveryInputData.assemblyRawAlignments, svDiscoveryInputData.headerBroadcast.getValue(), true)
                         .getAlignedContigs();
 
-        discoverVariantsAndWriteVCF(svDiscoveryDataBundle, parsedContigAlignments);
+        discoverVariantsAndWriteVCF(svDiscoveryInputData, parsedContigAlignments);
     }
 
-    public static void discoverVariantsAndWriteVCF(final SvDiscoveryDataBundle svDiscoveryDataBundle,
+    public static void discoverVariantsAndWriteVCF(final SvDiscoveryInputData svDiscoveryInputData,
                                                    final JavaRDD<AlignedContig> alignedContigs) {
 
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryDataBundle.referenceSequenceDictionaryBroadcast;
-        final String outputPath = svDiscoveryDataBundle.outputPath;
-        final Logger toolLogger = svDiscoveryDataBundle.toolLogger;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final String outputPath = svDiscoveryInputData.outputPath;
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
         final JavaPairRDD<byte[], List<ChimericAlignment>> contigSeqAndChimeras =
                 alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size() > 1)
@@ -143,9 +143,9 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                                         ChimericAlignment.parseOneContig(alignedContig, referenceSequenceDictionaryBroadcast.getValue(),
                                                 true, DEFAULT_MIN_ALIGNMENT_LENGTH, CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true)));
 
-        List<VariantContext> annotatedVariants = InsDelVariantDetector.produceVariantsFromSimpleChimeras(contigSeqAndChimeras, svDiscoveryDataBundle);
+        List<VariantContext> annotatedVariants = InsDelVariantDetector.produceVariantsFromSimpleChimeras(contigSeqAndChimeras, svDiscoveryInputData);
 
-        annotatedVariants = ImpreciseVariantDetector.detectImpreciseVariantsAndAddReadAnnotations(svDiscoveryDataBundle, annotatedVariants);
+        annotatedVariants = ImpreciseVariantDetector.detectImpreciseVariantsAndAddReadAnnotations(svDiscoveryInputData, annotatedVariants);
 
         SVVCFWriter.writeVCF(annotatedVariants,
                 outputPath,

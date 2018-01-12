@@ -9,7 +9,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.BreakEndVariantType;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryDataBundle;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
@@ -20,13 +20,13 @@ public final class SuspectedTransLocDetector implements VariantDetectorFromLocal
 
     @Override
     public void inferSvAndWriteVCF(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
-                                   final SvDiscoveryDataBundle svDiscoveryDataBundle) {
+                                   final SvDiscoveryInputData svDiscoveryInputData) {
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryDataBundle.referenceBroadcast;
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryDataBundle.referenceSequenceDictionaryBroadcast;
-        final String sampleId = svDiscoveryDataBundle.sampleId;
-        final String outputPath = svDiscoveryDataBundle.outputPath;
-        final Logger toolLogger = svDiscoveryDataBundle.toolLogger;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final String sampleId = svDiscoveryInputData.sampleId;
+        final String outputPath = svDiscoveryInputData.outputPath;
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
         toolLogger.info(assemblyContigs.count() + " chimeras indicating strand-switch-less breakpoints");
 

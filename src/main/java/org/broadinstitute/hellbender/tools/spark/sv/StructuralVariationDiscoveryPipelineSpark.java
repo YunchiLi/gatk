@@ -160,31 +160,31 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         // todo: when we call imprecise variants don't return here
         if(parsedAlignments.isEmpty()) return;
 
-        final SvDiscoveryDataBundle svDiscoveryDataBundle =
-                new SvDiscoveryDataBundle(ctx, discoverStageArgs, vcfOutputFileName,
+        final SvDiscoveryInputData svDiscoveryInputData =
+                new SvDiscoveryInputData(ctx, discoverStageArgs, vcfOutputFileName,
                         assembledEvidenceResults.getReadMetadata(), assembledEvidenceResults.getAssembledIntervals(),
                         makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
                         getReads(), getHeaderForReads(), getReference(), localLogger);
 
-        DiscoverVariantsFromContigAlignmentsSAMSpark.discoverVariantsAndWriteVCF(svDiscoveryDataBundle, parsedAlignments);
+        DiscoverVariantsFromContigAlignmentsSAMSpark.discoverVariantsAndWriteVCF(svDiscoveryInputData, parsedAlignments);
 
         if ( expVariantsOutDir != null ) {
-            svDiscoveryDataBundle.updateOutputPath(expVariantsOutDir);
-            experimentalInterpretation(ctx, assembledEvidenceResults, svDiscoveryDataBundle, evidenceAndAssemblyArgs.crossContigsToIgnoreFile);
+            svDiscoveryInputData.updateOutputPath(expVariantsOutDir);
+            experimentalInterpretation(ctx, assembledEvidenceResults, svDiscoveryInputData, evidenceAndAssemblyArgs.crossContigsToIgnoreFile);
         }
     }
 
     // hook up prototyping breakpoint and type inference tool
     private void experimentalInterpretation(final JavaSparkContext ctx,
                                             final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults,
-                                            final SvDiscoveryDataBundle svDiscoveryDataBundle,
+                                            final SvDiscoveryInputData svDiscoveryInputData,
                                             final String nonCanonicalChromosomeNamesFile) {
 
         if ( expVariantsOutDir == null )
             return;
 
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryDataBundle.referenceSequenceDictionaryBroadcast;
-        final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryDataBundle.headerBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputData.headerBroadcast;
         final SAMFileHeader headerForReads = headerBroadcast.getValue();
         final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
         final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(referenceSequenceDictionaryBroadcast.getValue());
@@ -198,21 +198,21 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                         .collect(Collectors.toList());
         JavaRDD<GATKRead> reads = ctx.parallelize(readsList);
 
-        final String sampleId = svDiscoveryDataBundle.sampleId;
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryDataBundle.referenceBroadcast;
-        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryDataBundle.cnvCallsBroadcast;
+        final String sampleId = svDiscoveryInputData.sampleId;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputData.cnvCallsBroadcast;
 
-        final SvDiscoveryDataBundle updatedSvDiscoveryDataBundle =
-                new SvDiscoveryDataBundle(sampleId, svDiscoveryDataBundle.discoverStageArgs, expVariantsOutDir,
-                        svDiscoveryDataBundle.metadata, svDiscoveryDataBundle.assembledIntervals,
-                        svDiscoveryDataBundle.evidenceTargetLinks, reads, svDiscoveryDataBundle.toolLogger,
+        final SvDiscoveryInputData updatedSvDiscoveryInputData =
+                new SvDiscoveryInputData(sampleId, svDiscoveryInputData.discoverStageArgs, expVariantsOutDir,
+                        svDiscoveryInputData.metadata, svDiscoveryInputData.assembledIntervals,
+                        svDiscoveryInputData.evidenceTargetLinks, reads, svDiscoveryInputData.toolLogger,
                         referenceBroadcast, referenceSequenceDictionaryBroadcast, headerBroadcast, cnvCallsBroadcast);
 
         EnumMap<AssemblyContigAlignmentSignatureClassifier.RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>>
                 contigsByPossibleRawTypes =
-                SvDiscoverFromLocalAssemblyContigAlignmentsSpark.preprocess(updatedSvDiscoveryDataBundle, nonCanonicalChromosomeNamesFile,true);
+                SvDiscoverFromLocalAssemblyContigAlignmentsSpark.preprocess(updatedSvDiscoveryInputData, nonCanonicalChromosomeNamesFile,true);
 
-        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.dispatchJobs(contigsByPossibleRawTypes, updatedSvDiscoveryDataBundle);
+        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.dispatchJobs(contigsByPossibleRawTypes, updatedSvDiscoveryInputData);
 
         // TODO: 11/30/17 add EXTERNAL_CNV_CALLS annotation to the variants called here
     }

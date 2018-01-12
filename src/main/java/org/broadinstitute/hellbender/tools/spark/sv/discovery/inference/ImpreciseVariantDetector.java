@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryDataBundle;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
@@ -19,18 +19,18 @@ import java.util.stream.Collectors;
 
 public class ImpreciseVariantDetector {
 
-    public static List<VariantContext> detectImpreciseVariantsAndAddReadAnnotations(final SvDiscoveryDataBundle svDiscoveryDataBundle,
+    public static List<VariantContext> detectImpreciseVariantsAndAddReadAnnotations(final SvDiscoveryInputData svDiscoveryInputData,
                                                                                     List<VariantContext> annotatedVariants) {
-        final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks = svDiscoveryDataBundle.evidenceTargetLinks;
+        final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks = svDiscoveryInputData.evidenceTargetLinks;
 
         if (evidenceTargetLinks != null) {
             annotatedVariants = processEvidenceTargetLinks(
                     annotatedVariants,
                     evidenceTargetLinks,
-                    svDiscoveryDataBundle.metadata,
-                    svDiscoveryDataBundle.referenceBroadcast.getValue(),
-                    svDiscoveryDataBundle.discoverStageArgs,
-                    svDiscoveryDataBundle.toolLogger);
+                    svDiscoveryInputData.metadata,
+                    svDiscoveryInputData.referenceBroadcast.getValue(),
+                    svDiscoveryInputData.discoverStageArgs,
+                    svDiscoveryInputData.toolLogger);
         }
         return annotatedVariants;
     }

@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryDataBundle;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
@@ -50,12 +50,12 @@ public final class CpxVariantDetector implements VariantDetectorFromLocalAssembl
 
     @Override
     public void inferSvAndWriteVCF(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
-                                   final SvDiscoveryDataBundle svDiscoveryDataBundle) {
+                                   final SvDiscoveryInputData svDiscoveryInputData) {
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryDataBundle.referenceBroadcast;
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryDataBundle.referenceSequenceDictionaryBroadcast;
-        final String outputPath = svDiscoveryDataBundle.outputPath;
-        final Logger toolLogger = svDiscoveryDataBundle.toolLogger;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final String outputPath = svDiscoveryInputData.outputPath;
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
         final JavaRDD<AnnotatedContig> annotatedContigs =
                 assemblyContigs.map(tig -> new AnnotatedContig(tig, referenceSequenceDictionaryBroadcast.getValue()));

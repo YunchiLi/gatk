@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryDataBundle;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 
 import java.util.Collections;
@@ -17,5 +17,5 @@ interface VariantDetectorFromLocalAssemblyContigAlignments {
     List<String> EMPTY_INSERTION_MAPPINGS = Collections.EMPTY_LIST;
 
     void inferSvAndWriteVCF(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
-                            final SvDiscoveryDataBundle svDiscoveryDataBundle);
+                            final SvDiscoveryInputData svDiscoveryInputData);
 }

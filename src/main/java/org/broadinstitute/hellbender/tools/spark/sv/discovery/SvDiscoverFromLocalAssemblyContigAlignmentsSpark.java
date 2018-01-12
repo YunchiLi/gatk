@@ -125,15 +125,15 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final SvDiscoveryDataBundle svDiscoveryDataBundle =
-                new SvDiscoveryDataBundle(ctx, discoverStageArgs, outputDir,
+        final SvDiscoveryInputData svDiscoveryInputData =
+                new SvDiscoveryInputData(ctx, discoverStageArgs, outputDir,
                         null, null, null,
                         getReads(), getHeaderForReads(), getReference(), localLogger);
 
         final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes =
-                preprocess(svDiscoveryDataBundle, nonCanonicalChromosomeNamesFile, writeSAMFiles);
+                preprocess(svDiscoveryInputData, nonCanonicalChromosomeNamesFile, writeSAMFiles);
 
-        dispatchJobs(contigsByPossibleRawTypes, svDiscoveryDataBundle);
+        dispatchJobs(contigsByPossibleRawTypes, svDiscoveryInputData);
     }
 
     //==================================================================================================================
@@ -142,15 +142,15 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
      * First parse the input alignments, then classify the assembly contigs based on their alignment signatures,
      * and return the contigs that are classified together for downstream inference.
      */
-    public static EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> preprocess(final SvDiscoveryDataBundle svDiscoveryDataBundle,
+    public static EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> preprocess(final SvDiscoveryInputData svDiscoveryInputData,
                                                                                                final String nonCanonicalChromosomeNamesFile,
                                                                                                final boolean writeSAMFiles) {
 
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryDataBundle.referenceSequenceDictionaryBroadcast;
-        final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryDataBundle.headerBroadcast;
-        final JavaRDD<GATKRead> assemblyRawAlignments = svDiscoveryDataBundle.assemblyRawAlignments;
-        final String outputPath = svDiscoveryDataBundle.outputPath;
-        final Logger toolLogger = svDiscoveryDataBundle.toolLogger;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputData.headerBroadcast;
+        final JavaRDD<GATKRead> assemblyRawAlignments = svDiscoveryInputData.assemblyRawAlignments;
+        final String outputPath = svDiscoveryInputData.outputPath;
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
         // filter alignments and split the gaps, hence the name "reconstructed"
         final JavaRDD<AlignedContig> contigsWithChimericAlignmentsReconstructed =
@@ -203,26 +203,26 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
      * will be extracted and put in SAM files in {@link #outputDir} too.
      */
     public static void dispatchJobs(final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes,
-                                    final SvDiscoveryDataBundle svDiscoveryDataBundle) {
+                                    final SvDiscoveryInputData svDiscoveryInputData) {
 
-        final String outputDir = svDiscoveryDataBundle.outputPath;
+        final String outputDir = svDiscoveryInputData.outputPath;
 
         // TODO: 1/10/18 bring back imprecise variants calling (definitely not here) and read annotation
-        svDiscoveryDataBundle.updateOutputPath(outputDir+"/"+RawTypes.InsDel.name()+".vcf");
+        svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.InsDel.name()+".vcf");
         new InsDelVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), svDiscoveryDataBundle);
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), svDiscoveryInputData);
 
-        svDiscoveryDataBundle.updateOutputPath(outputDir+"/"+RawTypes.IntraChrStrandSwitch.name()+".vcf");
+        svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.IntraChrStrandSwitch.name()+".vcf");
         new SimpleStrandSwitchVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch), svDiscoveryDataBundle);
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch), svDiscoveryInputData);
 
-        svDiscoveryDataBundle.updateOutputPath(outputDir+"/"+RawTypes.MappedInsertionBkpt.name()+".vcf");
+        svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.MappedInsertionBkpt.name()+".vcf");
         new SuspectedTransLocDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.MappedInsertionBkpt), svDiscoveryDataBundle);
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.MappedInsertionBkpt), svDiscoveryInputData);
 
-        svDiscoveryDataBundle.updateOutputPath(outputDir+"/"+RawTypes.Cpx.name()+".vcf");
+        svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.Cpx.name()+".vcf");
         new CpxVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.Cpx), svDiscoveryDataBundle);
+                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.Cpx), svDiscoveryInputData);
     }
 
     //==================================================================================================================

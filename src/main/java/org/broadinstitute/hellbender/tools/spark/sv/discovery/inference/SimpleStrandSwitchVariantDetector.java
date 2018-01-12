@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.BreakEndVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryDataBundle;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
@@ -34,15 +34,15 @@ public final class SimpleStrandSwitchVariantDetector implements VariantDetectorF
 
     @Override
     public void inferSvAndWriteVCF(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
-                                   final SvDiscoveryDataBundle svDiscoveryDataBundle) {
+                                   final SvDiscoveryInputData svDiscoveryInputData) {
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryDataBundle.referenceBroadcast;
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryDataBundle.referenceSequenceDictionaryBroadcast;
-        final String sampleId = svDiscoveryDataBundle.sampleId;
-        final String outputPath = svDiscoveryDataBundle.outputPath;
-        final Logger toolLogger = svDiscoveryDataBundle.toolLogger;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final String sampleId = svDiscoveryInputData.sampleId;
+        final String outputPath = svDiscoveryInputData.outputPath;
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
-        svDiscoveryDataBundle.toolLogger.info(assemblyContigs.count() +
+        svDiscoveryInputData.toolLogger.info(assemblyContigs.count() +
                 " chimeras indicating either 1) simple strand-switch breakpoints, or 2) inverted duplication.");
 
         // TODO: 11/23/17 take insertion mappings from the input and add them to VC

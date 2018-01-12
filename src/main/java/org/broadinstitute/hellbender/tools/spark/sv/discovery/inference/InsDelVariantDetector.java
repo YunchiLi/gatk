@@ -32,11 +32,11 @@ public final class InsDelVariantDetector implements VariantDetectorFromLocalAsse
 
     @Override
     public void inferSvAndWriteVCF(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
-                                   final SvDiscoveryDataBundle svDiscoveryDataBundle){
+                                   final SvDiscoveryInputData svDiscoveryInputData){
 
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryDataBundle.referenceSequenceDictionaryBroadcast;
-        final String outputPath = svDiscoveryDataBundle.outputPath;
-        final Logger toolLogger = svDiscoveryDataBundle.toolLogger;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final String outputPath = svDiscoveryInputData.outputPath;
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
         // TODO: 11/23/17 take insertion mappings from the input and add them to VC
         final JavaPairRDD<byte[], List<ChimericAlignment>> contigSeqAndChimeras =
@@ -49,7 +49,7 @@ public final class InsDelVariantDetector implements VariantDetectorFromLocalAsse
                                         DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH,
                                 referenceSequenceDictionaryBroadcast.getValue()));
 
-        final List<VariantContext> annotatedInsDels = produceVariantsFromSimpleChimeras(contigSeqAndChimeras, svDiscoveryDataBundle);
+        final List<VariantContext> annotatedInsDels = produceVariantsFromSimpleChimeras(contigSeqAndChimeras, svDiscoveryInputData);
 
         SVVCFWriter.writeVCF(annotatedInsDels, outputPath,
                 referenceSequenceDictionaryBroadcast.getValue(), toolLogger);
@@ -91,15 +91,15 @@ public final class InsDelVariantDetector implements VariantDetectorFromLocalAsse
     }
 
     public static List<VariantContext> produceVariantsFromSimpleChimeras(final JavaPairRDD<byte[], List<ChimericAlignment>> contigSeqAndChimeras,
-                                                                         final SvDiscoveryDataBundle svDiscoveryDataBundle) {
+                                                                         final SvDiscoveryInputData svDiscoveryInputData) {
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryDataBundle.referenceBroadcast;
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryDataBundle.referenceSequenceDictionaryBroadcast;
-        final List<SVInterval> assembledIntervals = svDiscoveryDataBundle.assembledIntervals;
-        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryDataBundle.cnvCallsBroadcast;
-        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryDataBundle.discoverStageArgs;
-        final String sampleId = svDiscoveryDataBundle.sampleId;
-        final Logger toolLogger = svDiscoveryDataBundle.toolLogger;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final List<SVInterval> assembledIntervals = svDiscoveryInputData.assembledIntervals;
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputData.cnvCallsBroadcast;
+        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputData.discoverStageArgs;
+        final String sampleId = svDiscoveryInputData.sampleId;
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
         final JavaPairRDD<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> narlsAndSources =
                 contigSeqAndChimeras

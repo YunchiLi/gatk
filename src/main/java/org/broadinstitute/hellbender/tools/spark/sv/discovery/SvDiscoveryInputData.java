@@ -27,7 +27,7 @@ import java.util.List;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
 
 
-public final class SvDiscoveryDataBundle {
+public final class SvDiscoveryInputData {
 
     public final String sampleId;
     public String outputPath;
@@ -46,16 +46,16 @@ public final class SvDiscoveryDataBundle {
 
     public final Logger toolLogger;
 
-    public SvDiscoveryDataBundle(final JavaSparkContext ctx,
-                                 final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs,
-                                 final String outputPath,
-                                 final ReadMetadata metadata,
-                                 final List<SVInterval> assembledIntervals,
-                                 final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
-                                 final JavaRDD<GATKRead> reads,
-                                 final SAMFileHeader headerForReads,
-                                 final ReferenceMultiSource reference,
-                                 final Logger toolLogger) {
+    public SvDiscoveryInputData(final JavaSparkContext ctx,
+                                final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs,
+                                final String outputPath,
+                                final ReadMetadata metadata,
+                                final List<SVInterval> assembledIntervals,
+                                final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                final JavaRDD<GATKRead> reads,
+                                final SAMFileHeader headerForReads,
+                                final ReferenceMultiSource reference,
+                                final Logger toolLogger) {
 
         this(SVUtils.getSampleId(headerForReads), discoverStageArgs, outputPath, metadata, assembledIntervals,
                 evidenceTargetLinks, reads, toolLogger,
@@ -63,18 +63,18 @@ public final class SvDiscoveryDataBundle {
                 broadcastCNVCalls(ctx, headerForReads, SVUtils.getSampleId(headerForReads), discoverStageArgs));
     }
 
-    public SvDiscoveryDataBundle(final String sampleId,
-                                 final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs,
-                                 final String outputPath,
-                                 final ReadMetadata metadata,
-                                 final List<SVInterval> assembledIntervals,
-                                 final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
-                                 final JavaRDD<GATKRead> reads,
-                                 final Logger toolLogger,
-                                 final Broadcast<ReferenceMultiSource> referenceBroadcast,
-                                 final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast,
-                                 final Broadcast<SAMFileHeader> headerBroadcast,
-                                 final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast) {
+    public SvDiscoveryInputData(final String sampleId,
+                                final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs,
+                                final String outputPath,
+                                final ReadMetadata metadata,
+                                final List<SVInterval> assembledIntervals,
+                                final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                final JavaRDD<GATKRead> reads,
+                                final Logger toolLogger,
+                                final Broadcast<ReferenceMultiSource> referenceBroadcast,
+                                final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast,
+                                final Broadcast<SAMFileHeader> headerBroadcast,
+                                final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast) {
 
         Utils.validate(! (evidenceTargetLinks != null && metadata == null),
                 "Must supply read metadata when incorporating evidence target links");
