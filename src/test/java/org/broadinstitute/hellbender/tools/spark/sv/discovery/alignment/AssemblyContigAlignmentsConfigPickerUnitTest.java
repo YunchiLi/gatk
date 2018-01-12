@@ -78,7 +78,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
 
         if (expectedConfigurationCount == 1) {
             final AlignedContig tig =
-                    AssemblyContigAlignmentsConfigPicker.filterAndSplitGappedAI(
+                    AssemblyContigAlignmentsConfigPicker.filterAndSplitGappedAlignmentInterval(
                             SparkContextFactory.getTestSparkContext().parallelize(Collections.singletonList(contig))
                             , null, null, 0.0).collect().get(0);
             assertEquals(tig.alignmentIntervals.size(), expectedAICount,

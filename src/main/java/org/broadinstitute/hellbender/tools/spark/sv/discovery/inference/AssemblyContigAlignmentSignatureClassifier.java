@@ -14,9 +14,6 @@ import java.util.stream.Collectors;
 
 public final class AssemblyContigAlignmentSignatureClassifier {
 
-    public static final int ALIGNMENT_MAPQUAL_THREHOLD = 20;
-    public static final int ALIGNMENT_READSPAN_THRESHOLD = 10;
-
     public enum RawTypes {
         InsDel,                 // 2 alignments, indicating ins/del, simple duplication expansion/contractions
         IntraChrStrandSwitch,   // breakpoint for events involving intra-chromosome strand switch, particularly for inversion breakpoint suspects
@@ -44,7 +41,7 @@ public final class AssemblyContigAlignmentSignatureClassifier {
         final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByRawTypesFromMultiAlignment = new EnumMap<>(RawTypes.class);
         final MultipleAlignmentReclassificationResults multipleAlignmentReclassificationResults =
                 reClassifyContigsWithMultipleAlignments(moreThanTwoAlignments,
-                        ALIGNMENT_MAPQUAL_THREHOLD, ALIGNMENT_READSPAN_THRESHOLD);
+                        AssemblyContigAlignmentsConfigPicker.ALIGNMENT_MAPQUAL_THREHOLD, AssemblyContigAlignmentsConfigPicker.ALIGNMENT_READSPAN_THRESHOLD);
         contigsByRawTypesFromMultiAlignment.put(RawTypes.MisAssemblySuspect,
                 multipleAlignmentReclassificationResults.nonInformativeContigs);
         contigsByRawTypesFromMultiAlignment.put(RawTypes.Incomplete,

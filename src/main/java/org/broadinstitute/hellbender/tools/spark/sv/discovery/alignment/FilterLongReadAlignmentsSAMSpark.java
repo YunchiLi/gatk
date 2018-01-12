@@ -111,7 +111,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
 
             Files.write(Paths.get(outputFilePrefix + "_newFiltering.ai"),
                     () -> AssemblyContigAlignmentsConfigPicker
-                            .parseIntoOptimallyCoveredContig(reads, header, nonCanonicalContigNamesFile, configScoreDiffTolerance, localLogger)
+                            .createOptimalCoverageAlignmentSetsForContigs(reads, header, nonCanonicalContigNamesFile, configScoreDiffTolerance, localLogger)
                             .sortBy(tig -> tig.contigName, true, reads.getNumPartitions() / 100) // num partition is purely guess
                             .mapToPair(contig -> new Tuple2<>(contig.contigName,
                                     contig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList())))

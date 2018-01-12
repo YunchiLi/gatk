@@ -180,20 +180,14 @@ public final class InsDelVariantDetector implements VariantDetectorFromLocalAsse
                     if (hasNoInsertedSeq) {
                         type = new SimpleSVType.Deletion(novelAdjacencyReferenceLocations); // clean contraction of repeat 2 -> 1, or complex contraction
                     } else {
-                        throw new GATKException("Something went wrong in type inference, there's suspected deletion happening but both inserted sequence and duplication exits (not supported yet): "
+                        throw new GATKException("Something went wrong in novel adjacency interpretation: " +
+                                " inferring simple SV type from a novel adjacency between two different reference locations, but annotated with both inserted sequence and duplication, which is NOT simple.\n"
                                 + novelAdjacencyReferenceLocations.toString());
                     }
                 }
             }
         } else {
             type = new SimpleSVType.Inversion(novelAdjacencyReferenceLocations);
-        }
-
-        // developer check to make sure new types are treated correctly
-        try {
-            SimpleSVType.TYPES.valueOf(type.toString());
-        } catch (final IllegalArgumentException ex) {
-            throw new GATKException.ShouldNeverReachHereException("Inferred type is not known yet: " + type.toString(), ex);
         }
 
         return type;

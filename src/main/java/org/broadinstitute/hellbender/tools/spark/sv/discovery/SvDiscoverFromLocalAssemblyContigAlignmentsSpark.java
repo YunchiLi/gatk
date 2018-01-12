@@ -155,7 +155,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         // filter alignments and split the gaps, hence the name "reconstructed"
         final JavaRDD<AlignedContig> contigsWithChimericAlignmentsReconstructed =
                 AssemblyContigAlignmentsConfigPicker
-                        .parseIntoOptimallyCoveredContig(assemblyRawAlignments, headerBroadcast.getValue(),
+                        .createOptimalCoverageAlignmentSetsForContigs(assemblyRawAlignments, headerBroadcast.getValue(),
                                 nonCanonicalChromosomeNamesFile, 0.0, toolLogger)
                         .filter(lr -> lr.alignmentIntervals.size() > 1).cache();
         toolLogger.info( contigsWithChimericAlignmentsReconstructed.count() +

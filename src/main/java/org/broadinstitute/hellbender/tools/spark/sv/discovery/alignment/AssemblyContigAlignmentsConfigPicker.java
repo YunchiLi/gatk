@@ -28,70 +28,93 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 
 public class AssemblyContigAlignmentsConfigPicker {
 
+    public static final int ALIGNMENT_MAPQUAL_THREHOLD = 20;
+    public static final int ALIGNMENT_READSPAN_THRESHOLD = 10;
+
     /**
      * Filters an input of SAM file containing alignments of a single-ended long read that
-     * aims at providing an "optimal coverage" of the long read, based on an heuristic scoring scheme
+     * aims at providing an "optimal coverage" of the assembly contig, based on an heuristic scoring scheme
      * {@link #computeScoreOfConfiguration(List, Set, int)}.
      *
-     * @param longReads             long read alignments
+     * @param assemblyAlignments    long read alignments
      * @param header                header for the long reads
-     * @param scoreDiffTolerance    a tolerance where if two configurations' scores differ less than or equal to this amount, they are considered equally good
+     * @param scoreDiffTolerance    a tolerance where if two configurations' scores differ by less than or equal to this amount, they are considered equally good
      * @param toolLogger            logger for, most likely, debugging uses
      *
      * @return              contigs with alignments filtered and custom formatted as {@link AlignmentInterval}
      */
-    public static JavaRDD<AlignedContig> parseIntoOptimallyCoveredContig(final JavaRDD<GATKRead> longReads,
-                                                                         final SAMFileHeader header,
-                                                                         final String nonCanonicalContigNamesFile,
-                                                                         final Double scoreDiffTolerance,
-                                                                         final Logger toolLogger) {
+    public static JavaRDD<AlignedContig> createOptimalCoverageAlignmentSetsForContigs(final JavaRDD<GATKRead> assemblyAlignments,
+                                                                                      final SAMFileHeader header,
+                                                                                      final String nonCanonicalContigNamesFile,
+                                                                                      final Double scoreDiffTolerance,
+                                                                                      final Logger toolLogger) {
 
-        final JavaRDD<AlignedContig> parsedContigAlignments = preprocess(longReads, header, toolLogger);
+        final JavaRDD<AlignedContig> parsedContigAlignments =
+                convertRawAlignmentsToAlignedContigAndFilterByQuality(assemblyAlignments, header, toolLogger);
 
-        return filterAndSplitGappedAI(parsedContigAlignments, nonCanonicalContigNamesFile,
+        return filterAndSplitGappedAlignmentInterval(parsedContigAlignments, nonCanonicalContigNamesFile,
                                       header.getSequenceDictionary(), scoreDiffTolerance);
     }
 
-    private static JavaRDD<AlignedContig> preprocess(final JavaRDD<GATKRead> longReads, final SAMFileHeader header, final Logger toolLogger) {
-        longReads.cache();
-        toolLogger.info( "Processing " + longReads.count() + " raw alignments from " +
-                         longReads.map(GATKRead::getName).distinct().count() + " contigs.");
+    //==================================================================================================================
+
+    /**
+     * Parses input alignments into custom {@link AlignmentInterval} format, and
+     * performs a primitive filtering on the contigs implemented in {@link #notDiscardForBadMQ(AlignedContig)} that
+     *   gets rid of contigs with no good alignments.
+     */
+    private static JavaRDD<AlignedContig> convertRawAlignmentsToAlignedContigAndFilterByQuality(final JavaRDD<GATKRead> assemblyAlignments,
+                                                                                                final SAMFileHeader header,
+                                                                                                final Logger toolLogger) {
+        assemblyAlignments.cache();
+        toolLogger.info( "Processing " + assemblyAlignments.count() + " raw alignments from " +
+                         assemblyAlignments.map(GATKRead::getName).distinct().count() + " contigs.");
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
-                new SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser(longReads, header, false)
+                new SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser(assemblyAlignments, header, false)
                         .getAlignedContigs()
-                        .filter(AssemblyContigAlignmentsConfigPicker::contigNaiveFilter).cache();
-        longReads.unpersist();
-        toolLogger.info( "Primitive filtering based purely on MQ left " + parsedContigAlignments.count() + " contigs.");
+                        .filter(AssemblyContigAlignmentsConfigPicker::notDiscardForBadMQ).cache();
+        assemblyAlignments.unpersist();
+        toolLogger.info( "Filtering on MQ left " + parsedContigAlignments.count() + " contigs.");
         return parsedContigAlignments;
     }
 
     /**
-     * Idea is to keep mapped contig that has at least two alignments over MQ 20,
-     * or in the case of a single alignment (cannot be simply filtered out the contig because it may contain a large gap),
-     * it must be MQ>20.
+     * Idea is to keep mapped contig that
+     *  either has at least two alignments over {@link #ALIGNMENT_MAPQUAL_THREHOLD},
+     *  or in the case of a single alignment, it must be MQ > {@link #ALIGNMENT_MAPQUAL_THREHOLD}.
+     * Note that we are not simply filtering out contigs with only 1 alignment because
+     * they might contain large (> 50) gaps hence should be kept.
+     *
+     * todo:
+     *   the current implementation exhaustively checks the power set of all possible alignments of each assembly contig,
+     *   which is computationally impossible for contigs having many-but-barely-any-good alignments, yet bringing in no value,
+     *   hence this primitive filtering step to get rid of these bad assembly contigs.
      */
-    private static boolean contigNaiveFilter(final AlignedContig contig) {
+    private static boolean notDiscardForBadMQ(final AlignedContig contig) {
         if (contig.alignmentIntervals.size() < 2 ) {
-            return (!contig.alignmentIntervals.isEmpty()) && contig.alignmentIntervals.get(0).mapQual > 20;
+            return (!contig.alignmentIntervals.isEmpty()) && contig.alignmentIntervals.get(0).mapQual > ALIGNMENT_MAPQUAL_THREHOLD;
         } else {
-            return contig.alignmentIntervals.stream().mapToInt(ai -> ai.mapQual).filter(mq -> mq > 20).count() > 1;
+            return contig.alignmentIntervals.stream().mapToInt(ai -> ai.mapQual).filter(mq -> mq > ALIGNMENT_MAPQUAL_THREHOLD).count() > 1;
         }
     }
 
+    //==================================================================================================================
+
     /**
-     * Manages configuration score-based filtering,
-     * then split the gapped alignments by delegating to {@link ContigAlignmentsModifier#splitGappedAlignment(AlignmentInterval, int, int)}.
+     * For each assembly contig, scores its alignment configurations and pick the best one(s),
+     * then reconstruct the contig's alignment configuration through {@link #reConstructContigFromPickedConfiguration(Tuple2)}.
+     *
      * Note that this step is essentially a flatMap operation, meaning that one contig may return 1 or multiple contigs:
      *  *) when 1 contig is yielded, it means the contig has only 1 configuration that scored the best
      *  *) when multiple contigs are yielded, it means the contig has several top-scored configurations
      * How to handle the second scenario can be treated in a separate logic unit.
      */
     @VisibleForTesting
-    static JavaRDD<AlignedContig> filterAndSplitGappedAI(final JavaRDD<AlignedContig> parsedContigAlignments,
-                                                         final String nonCanonicalContigNamesFile,
-                                                         final SAMSequenceDictionary dictionary,
-                                                         final Double scoreDiffTolerance) {
+    static JavaRDD<AlignedContig> filterAndSplitGappedAlignmentInterval(final JavaRDD<AlignedContig> parsedContigAlignments,
+                                                                        final String nonCanonicalContigNamesFile,
+                                                                        final SAMSequenceDictionary dictionary,
+                                                                        final Double scoreDiffTolerance) {
 
         final Set<String> canonicalChromosomes = getCanonicalChromosomes(nonCanonicalContigNamesFile, dictionary);
 
@@ -201,20 +224,31 @@ public class AssemblyContigAlignmentsConfigPicker {
     }
 
     /**
-     * Depending on the number of best-scored configurations, one contig may produce multiple contigs with the same name
-     * and sequence but different selected configurations.
+     * Reconstructs (possibly more than one) {@link AlignedContig} based on
+     * the given best-scored configuration(s) in {@code nameSeqAndBestConfigurationsOfOneRead}.
+     *
+     * todo: note that alignments with large gaps are split here, but it has been discovered to be wrong to do it here, which would be fixed in the next immediate PR.
+     *
+     * @param nameSeqAndBestConfigurationsOfOneRead the name, sequence, and picked best alignment configuration(s) of an assembly contig
+     * @return The number of returned contigs will be the same as the given best-scored configurations.
      */
     private static Iterator<AlignedContig> reConstructContigFromPickedConfiguration(
-            final Tuple2<String, Tuple2<byte[], List<List<AlignmentInterval>>>> nameSeqAndAlignmentsOfOneRead) {
-        if (nameSeqAndAlignmentsOfOneRead._2._2.size() > 1) {
-            return nameSeqAndAlignmentsOfOneRead._2._2.stream()
-                    .map(configuration -> new AlignedContig(nameSeqAndAlignmentsOfOneRead._1, nameSeqAndAlignmentsOfOneRead._2._1,
-                            splitGaps(configuration), true))
+            final Tuple2<String, Tuple2<byte[], List<List<AlignmentInterval>>>> nameSeqAndBestConfigurationsOfOneRead) {
+
+        final int bestConfigCount = nameSeqAndBestConfigurationsOfOneRead._2._2.size();
+        final String contigName = nameSeqAndBestConfigurationsOfOneRead._1;
+        final byte[] contigSeq = nameSeqAndBestConfigurationsOfOneRead._2._1;
+        if (bestConfigCount > 1) { // more than one best configuration
+            return nameSeqAndBestConfigurationsOfOneRead._2._2.stream()
+                    .map(configuration ->
+                            new AlignedContig(contigName, contigSeq, splitGaps(configuration),
+                                    true))
                     .sorted(sortConfigurations())
                     .collect(Collectors.toList()).iterator();
         } else {
-            return Collections.singletonList(new AlignedContig(nameSeqAndAlignmentsOfOneRead._1, nameSeqAndAlignmentsOfOneRead._2._1,
-                    splitGaps(nameSeqAndAlignmentsOfOneRead._2._2.get(0)), false))
+            return Collections.singletonList(
+                    new AlignedContig(contigName, contigSeq, splitGaps(nameSeqAndBestConfigurationsOfOneRead._2._2.get(0)),
+                            false))
                     .iterator();
         }
     }
@@ -242,6 +276,7 @@ public class AssemblyContigAlignmentsConfigPicker {
     /**
      * Primary reference contigs are defined as chromosomes 1-22, X, Y, M, and defined for both GRCh38 and hg19.
      */
+    @VisibleForTesting
     static Set<String> getCanonicalChromosomes(final String nonCanonicalContigNamesFile, final SAMSequenceDictionary dictionary) {
         if (nonCanonicalContigNamesFile!= null) {
 
