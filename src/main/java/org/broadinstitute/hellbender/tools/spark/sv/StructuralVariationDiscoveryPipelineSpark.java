@@ -28,10 +28,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrEx
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -166,10 +163,12 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         // todo: when we call imprecise variants don't return here
         if(parsedAlignments.isEmpty()) return;
 
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = broadcastCNVCalls(ctx, headerForReads, discoverStageArgs.cnvCallsFile);
         final SvDiscoveryInputData svDiscoveryInputData =
                 new SvDiscoveryInputData(ctx, discoverStageArgs, vcfOutputFileName,
                         assembledEvidenceResults.getReadMetadata(), assembledEvidenceResults.getAssembledIntervals(),
                         makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
+                        cnvCallsBroadcast,
                         getReads(), getHeaderForReads(), getReference(), localLogger);
 
         // TODO: 1/14/18 this is to be phased-out: old way of calling precise variants
@@ -426,6 +425,25 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             //                         ; the two routes are tested to be generating the same output via {@code AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
             return filterAndConvertToAlignedContigViaSAM(alignedAssemblyOrExcuseList, header, ctx);
         }
+    }
+
+    public static Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls(final JavaSparkContext ctx,
+                                                                              final SAMFileHeader header,
+                                                                              final String cnvCallsFile) {
+        final SVIntervalTree<VariantContext> cnvCalls;
+        if (cnvCallsFile != null) {
+            cnvCalls = CNVInputReader.loadCNVCalls(cnvCallsFile, header);
+        } else {
+            cnvCalls = null;
+        }
+
+        final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls;
+        if (cnvCalls != null) {
+            broadcastCNVCalls = ctx.broadcast(cnvCalls);
+        } else {
+            broadcastCNVCalls = null;
+        }
+        return broadcastCNVCalls;
     }
 
 }

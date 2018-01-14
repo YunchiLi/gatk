@@ -8,6 +8,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
@@ -44,6 +45,7 @@ public final class SvDiscoveryInputData {
                                 final ReadMetadata metadata,
                                 final List<SVInterval> assembledIntervals,
                                 final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
                                 final JavaRDD<GATKRead> reads,
                                 final SAMFileHeader headerForReads,
                                 final ReferenceMultiSource reference,
@@ -52,7 +54,7 @@ public final class SvDiscoveryInputData {
         this(SVUtils.getSampleId(headerForReads), discoverStageArgs, outputPath, metadata, assembledIntervals,
                 evidenceTargetLinks, reads, toolLogger,
                 ctx.broadcast(reference), ctx.broadcast(headerForReads.getSequenceDictionary()), ctx.broadcast(headerForReads),
-                CNVInputReader.broadcastCNVCalls(ctx, headerForReads, discoverStageArgs.cnvCallsFile));
+                cnvCallsBroadcast);
     }
 
     public SvDiscoveryInputData(final String sampleId,

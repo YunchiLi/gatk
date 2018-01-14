@@ -4,8 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
@@ -14,31 +12,12 @@ import java.util.ArrayList;
 
 public class CNVInputReader {
 
-    public static Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls(final JavaSparkContext ctx,
-                                                                              final SAMFileHeader header,
-                                                                              final String cnvCallsFile) {
-        final SVIntervalTree<VariantContext> cnvCalls;
-        if (cnvCallsFile != null) {
-            cnvCalls = loadCNVCalls(cnvCallsFile, header);
-        } else {
-            cnvCalls = null;
-        }
-
-        final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls;
-        if (cnvCalls != null) {
-            broadcastCNVCalls = ctx.broadcast(cnvCalls);
-        } else {
-            broadcastCNVCalls = null;
-        }
-        return broadcastCNVCalls;
-    }
-
     /**
      * Loads an external cnv call list and returns the results in an SVIntervalTree. NB: the contig indices in the SVIntervalTree
      * are based on the sequence indices in the SAM header, _NOT_ the ReadMetadata (which we might not have access to at this
      * time).
      */
-    private static SVIntervalTree<VariantContext> loadCNVCalls(final String cnvCallsFile,
+    public static SVIntervalTree<VariantContext> loadCNVCalls(final String cnvCallsFile,
                                                                final SAMFileHeader headerForReads) {
         Utils.validate(cnvCallsFile != null, "Can't load null CNV calls file");
         try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(cnvCallsFile, null, 0, null) ) {

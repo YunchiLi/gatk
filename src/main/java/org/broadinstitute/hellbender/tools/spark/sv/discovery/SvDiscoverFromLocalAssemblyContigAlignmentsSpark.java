@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -23,9 +24,11 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -125,9 +128,13 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast =
+                StructuralVariationDiscoveryPipelineSpark.broadcastCNVCalls(ctx, getHeaderForReads(),
+                        discoverStageArgs.cnvCallsFile);
         final SvDiscoveryInputData svDiscoveryInputData =
                 new SvDiscoveryInputData(ctx, discoverStageArgs, outputDir,
                         null, null, null,
+                        cnvCallsBroadcast,
                         getReads(), getHeaderForReads(), getReference(), localLogger);
 
         final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes =

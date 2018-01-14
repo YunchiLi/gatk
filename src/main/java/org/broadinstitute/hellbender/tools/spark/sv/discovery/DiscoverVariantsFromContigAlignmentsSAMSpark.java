@@ -18,9 +18,11 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDisc
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.InsDelVariantDetector;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import scala.Tuple2;
 
@@ -116,9 +118,14 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast =
+                StructuralVariationDiscoveryPipelineSpark.broadcastCNVCalls(ctx, getHeaderForReads(),
+                        discoverStageArgs.cnvCallsFile);
+
         final SvDiscoveryInputData svDiscoveryInputData =
-                new SvDiscoveryInputData(ctx, discoverStageArgs, vcfOutputFileName, null, null,
-                        null,
+                new SvDiscoveryInputData(ctx, discoverStageArgs, vcfOutputFileName,
+                        null, null, null,
+                        cnvCallsBroadcast,
                         getReads(), getHeaderForReads(), getReference(), localLogger);
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
