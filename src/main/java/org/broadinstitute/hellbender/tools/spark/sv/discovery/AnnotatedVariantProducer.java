@@ -7,7 +7,7 @@ import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -202,11 +202,31 @@ public class AnnotatedVariantProducer implements Serializable {
         return new ArrayList<>(Arrays.asList(Allele.create(new String(refBases), true), SvType.getAltAllele()));
     }
 
-    public static VariantContext annotateWithImpreciseEvidenceLinks(final VariantContext variant,
-                                                                    final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
-                                                                    final SAMSequenceDictionary referenceSequenceDictionary,
-                                                                    final ReadMetadata metadata,
-                                                                    final int defaultUncertainty) {
+    public static List<VariantContext> annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(final List<VariantContext> assemblyDiscoveredVariants,
+                                                                                              final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                                                              final ReadMetadata metadata,
+                                                                                              final ReferenceMultiSource reference,
+                                                                                              final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                                                              final Logger localLogger) {
+
+        final int originalEvidenceLinkSize = evidenceTargetLinks.size();
+        final List<VariantContext> result = assemblyDiscoveredVariants
+                .stream()
+                .map(variant -> annotateWithImpreciseEvidenceLinks(
+                        variant,
+                        evidenceTargetLinks,
+                        reference.getReferenceSequenceDictionary(null),
+                        metadata, parameters.assemblyImpreciseEvidenceOverlapUncertainty))
+                .collect(Collectors.toList());
+        localLogger.info("Used " + (originalEvidenceLinkSize - evidenceTargetLinks.size()) + " evidence target links to annotate assembled breakpoints");
+        return result;
+    }
+
+    private static VariantContext annotateWithImpreciseEvidenceLinks(final VariantContext variant,
+                                                                     final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                                     final SAMSequenceDictionary referenceSequenceDictionary,
+                                                                     final ReadMetadata metadata,
+                                                                     final int defaultUncertainty) {
         if (variant.getStructuralVariantType() == StructuralVariantType.DEL) {
             SVContext svc = SVContext.of(variant);
             final int padding = (metadata == null) ? defaultUncertainty : (metadata.getMaxMedianFragmentSize() / 2);

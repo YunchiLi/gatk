@@ -1,13 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
@@ -19,56 +16,22 @@ import java.util.stream.Collectors;
 
 public class ImpreciseVariantDetector {
 
-    public static List<VariantContext> detectImpreciseVariantsAndAddReadAnnotations(final SvDiscoveryInputData svDiscoveryInputData,
-                                                                                    List<VariantContext> annotatedVariants) {
-        final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks = svDiscoveryInputData.evidenceTargetLinks;
 
-        if (evidenceTargetLinks != null) {
-            annotatedVariants = processEvidenceTargetLinks(
-                    annotatedVariants,
-                    evidenceTargetLinks,
-                    svDiscoveryInputData.metadata,
-                    svDiscoveryInputData.referenceBroadcast.getValue(),
-                    svDiscoveryInputData.discoverStageArgs,
-                    svDiscoveryInputData.toolLogger);
-        }
-        return annotatedVariants;
-    }
-
-    /**
-     * Uses the input EvidenceTargetLinks to either annotate the variants called from assembly discovery with split
-     * read and read pair evidence, or to call new imprecise variants if the number of pieces of evidence exceeds
-     * a given threshold.
-     */
-    @VisibleForTesting
-    public static List<VariantContext> processEvidenceTargetLinks(final List<VariantContext> assemblyDiscoveredVariants,
-                                                                  final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
-                                                                  final ReadMetadata metadata,
-                                                                  final ReferenceMultiSource reference,
-                                                                  final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
-                                                                  final Logger localLogger) {
-        final int originalEvidenceLinkSize = evidenceTargetLinks.size();
-        final List<VariantContext> result = assemblyDiscoveredVariants
-                .stream()
-                .map(variant -> AnnotatedVariantProducer.annotateWithImpreciseEvidenceLinks(
-                        variant,
-                        evidenceTargetLinks,
-                        reference.getReferenceSequenceDictionary(null),
-                        metadata, parameters.assemblyImpreciseEvidenceOverlapUncertainty))
-                        .collect(Collectors.toList());
-        localLogger.info("Used " + (originalEvidenceLinkSize - evidenceTargetLinks.size()) + " evidence target links to annotate assembled breakpoints");
-
+    public static List<VariantContext> callImpreciseDeletionFromEvidenceLinks(final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                                              final ReadMetadata metadata,
+                                                                              final ReferenceMultiSource reference,
+                                                                              final int impreciseEvidenceVariantCallingThreshold,
+                                                                              final Logger localLogger) {
         final List<VariantContext> impreciseVariants =
                 Utils.stream(evidenceTargetLinks)
                         .map(p -> p._2)
                         .filter(EvidenceTargetLink::isImpreciseDeletion)
-                        .filter(e -> e.getReadPairs() + e.getSplitReads() > parameters.impreciseEvidenceVariantCallingThreshold)
+                        .filter(e -> e.getReadPairs() + e.getSplitReads() > impreciseEvidenceVariantCallingThreshold)
                         .map(e -> createImpreciseDeletionVariant(e, metadata, reference))
                         .collect(Collectors.toList());
 
         localLogger.info("Called " + impreciseVariants.size() + " imprecise deletion variants");
-        result.addAll(impreciseVariants);
-        return result;
+        return impreciseVariants;
     }
 
     private static VariantContext createImpreciseDeletionVariant(final EvidenceTargetLink e,

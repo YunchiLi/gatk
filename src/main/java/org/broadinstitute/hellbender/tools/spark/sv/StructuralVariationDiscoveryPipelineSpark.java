@@ -17,16 +17,21 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.AssemblyContigAlignmentSignatureClassifier;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ImpreciseVariantDetector;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -157,6 +162,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final JavaRDD<AlignedContig> parsedAlignments =
                 new InMemoryAlignmentParser(ctx, assembledEvidenceResults.getAlignedAssemblyOrExcuseList(), headerForReads)
                         .getAlignedContigs();
+
         // todo: when we call imprecise variants don't return here
         if(parsedAlignments.isEmpty()) return;
 
@@ -166,12 +172,64 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                         makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
                         getReads(), getHeaderForReads(), getReference(), localLogger);
 
-        DiscoverVariantsFromContigAlignmentsSAMSpark.discoverVariantsAndWriteVCF(svDiscoveryInputData, parsedAlignments);
+        // TODO: 1/14/18 this is to be phased-out: old way of calling precise variants
+        // assembled breakpoints
+        List<VariantContext> assemblyBasedVariants =
+                DiscoverVariantsFromContigAlignmentsSAMSpark.discoverVariantsFromChimeras(svDiscoveryInputData, parsedAlignments);
 
+        final List<VariantContext> annotatedVariants = processEvidenceTargetLinks(assemblyBasedVariants, svDiscoveryInputData);
+
+        final String outputPath = svDiscoveryInputData.outputPath;
+        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue();
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
+        SVVCFWriter.writeVCF(annotatedVariants, outputPath, refSeqDictionary, toolLogger);
+
+        // TODO: 1/14/18 this is the next version of precise variant calling
         if ( expVariantsOutDir != null ) {
             svDiscoveryInputData.updateOutputPath(expVariantsOutDir);
             experimentalInterpretation(ctx, assembledEvidenceResults, svDiscoveryInputData, evidenceAndAssemblyArgs.crossContigsToIgnoreFile);
         }
+    }
+
+    /**
+     * Uses the input EvidenceTargetLinks to
+     *  <ul>
+     *      <li>
+     *          either annotate the variants called from assembly discovery with split read and read pair evidence, or
+     *      </li>
+     *      <li>
+     *          to call new imprecise variants if the number of pieces of evidence exceeds a given threshold.
+     *      </li>
+     *  </ul>
+     *
+     */
+    private static List<VariantContext> processEvidenceTargetLinks(List<VariantContext> assemblyBasedVariants,
+                                                                   final SvDiscoveryInputData svDiscoveryInputData) {
+
+        final List<VariantContext> annotatedVariants;
+        if (svDiscoveryInputData.evidenceTargetLinks != null) {
+            final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks = svDiscoveryInputData.evidenceTargetLinks;
+            final ReadMetadata metadata = svDiscoveryInputData.metadata;
+            final ReferenceMultiSource reference = svDiscoveryInputData.referenceBroadcast.getValue();
+            final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputData.discoverStageArgs;
+            final Logger toolLogger = svDiscoveryInputData.toolLogger;
+
+            // annotate with evidence links
+            annotatedVariants = AnnotatedVariantProducer.
+                    annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(assemblyBasedVariants,
+                            evidenceTargetLinks, metadata, reference, discoverStageArgs, toolLogger);
+
+            // then also imprecise deletion
+            final List<VariantContext> impreciseVariants = ImpreciseVariantDetector.
+                    callImpreciseDeletionFromEvidenceLinks(evidenceTargetLinks, metadata, reference,
+                            discoverStageArgs.impreciseEvidenceVariantCallingThreshold, toolLogger);
+
+            annotatedVariants.addAll(impreciseVariants);
+        } else {
+            annotatedVariants = assemblyBasedVariants;
+        }
+
+        return annotatedVariants;
     }
 
     // hook up prototyping breakpoint and type inference tool

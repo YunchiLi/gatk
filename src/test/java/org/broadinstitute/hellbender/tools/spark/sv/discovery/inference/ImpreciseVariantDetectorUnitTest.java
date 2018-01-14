@@ -36,23 +36,6 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "evidenceTargetLinksAndVariants")
     public Object[][] getEvidenceTargetLinksAndVariants() {
-        final VariantContext unAnnotatedVC = new VariantContextBuilder()
-                .id("TESTID")
-                .chr("20").start(200).stop(300)
-                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL))
-                .attribute(VCFConstants.END_KEY, 300)
-                .attribute(GATKSVVCFConstants.SVTYPE, SimpleSVType.TYPES.DEL.toString())
-                .make();
-
-        final VariantContext annotatedVC = new VariantContextBuilder()
-                .id("TESTID")
-                .chr("20").start(200).stop(300)
-                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL))
-                .attribute(VCFConstants.END_KEY, 300)
-                .attribute(GATKSVVCFConstants.SVTYPE, SimpleSVType.TYPES.DEL.toString())
-                .attribute(GATKSVVCFConstants.READ_PAIR_SUPPORT, 7)
-                .attribute(GATKSVVCFConstants.SPLIT_READ_SUPPORT, 5)
-                .make();
 
         final VariantContext impreciseDeletion = new VariantContextBuilder()
                 .id("DEL_IMPRECISE_20_950_1050_1975_2025")
@@ -72,42 +55,10 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
         tests.add(new Object[] {
                 Arrays.asList(
                         new EvidenceTargetLink(
-                                new StrandedInterval(new SVInterval(0, 190, 210), true),
-                                new StrandedInterval(new SVInterval(0, 310, 320), false),
-                                5, 7, new HashSet<>(), new HashSet<>())),
-                Arrays.asList( unAnnotatedVC ),
-                Arrays.asList( annotatedVC ) }
-                );
-        tests.add(new Object[] {
-                Arrays.asList(
-                        new EvidenceTargetLink(
-                                new StrandedInterval(new SVInterval(0, 190, 210), true),
-                                new StrandedInterval(new SVInterval(0, 310, 320), true),
-                                5, 7, new HashSet<>(), new HashSet<>())),
-                Arrays.asList( unAnnotatedVC ),
-                Arrays.asList( unAnnotatedVC ) }
-        );
-        tests.add(new Object[] {
-                Arrays.asList(
-                        new EvidenceTargetLink(
                                 new StrandedInterval(new SVInterval(0, 950, 1050), true),
                                 new StrandedInterval(new SVInterval(0, 1975, 2025), false),
                                 5, 7, new HashSet<>(), new HashSet<>())),
-                Arrays.asList( unAnnotatedVC ),
-                Arrays.asList( unAnnotatedVC, impreciseDeletion ) }
-        );
-        tests.add(new Object[] {
-                Arrays.asList(
-                        new EvidenceTargetLink(
-                                new StrandedInterval(new SVInterval(0, 190, 210), true),
-                                new StrandedInterval(new SVInterval(0, 310, 320), false),
-                                3, 4, new HashSet<>(), new HashSet<>()),
-                        new EvidenceTargetLink(
-                                new StrandedInterval(new SVInterval(0, 192, 215), true),
-                                new StrandedInterval(new SVInterval(0, 299, 303), false),
-                                2, 3, new HashSet<>(), new HashSet<>())),
-                Arrays.asList( unAnnotatedVC ),
-                Arrays.asList( annotatedVC ) }
+                Arrays.asList( impreciseDeletion ) }
         );
 
         return tests.toArray(new Object[][]{});
@@ -115,13 +66,11 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "evidenceTargetLinksAndVariants", groups = "sv")
     public void testProcessEvidenceTargetLinks(final List<EvidenceTargetLink> etls,
-                                               final List<VariantContext> inputVariants,
                                                final List<VariantContext> expectedVariants) {
-        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection params =
-                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
+        final int impreciseEvidenceVariantCallingThreshold =
+                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection().impreciseEvidenceVariantCallingThreshold;
 
-        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(
-                twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
         ReadMetadata metadata = Mockito.mock(ReadMetadata.class);
         when(metadata.getMaxMedianFragmentSize()).thenReturn(300);
@@ -130,11 +79,11 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
         PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTree = new PairedStrandedIntervalTree<>();
         etls.forEach(e -> evidenceTree.put(e.getPairedStrandedIntervals(), e));
 
-        final List<VariantContext> processedVariantContexts =
-                ImpreciseVariantDetector.processEvidenceTargetLinks(inputVariants, evidenceTree, metadata, referenceMultiSource, params, localLogger
-                );
+        final List<VariantContext> impreciseVariants =
+                ImpreciseVariantDetector.callImpreciseDeletionFromEvidenceLinks(evidenceTree, metadata,
+                        referenceMultiSource, impreciseEvidenceVariantCallingThreshold, localLogger);
 
-        VariantContextTestUtils.assertEqualVariants(processedVariantContexts, expectedVariants);
+        VariantContextTestUtils.assertEqualVariants(impreciseVariants, expectedVariants);
     }
 
 }

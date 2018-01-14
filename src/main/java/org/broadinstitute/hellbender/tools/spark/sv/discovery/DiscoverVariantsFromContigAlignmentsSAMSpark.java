@@ -20,7 +20,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ImpreciseVariantDetector;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.InsDelVariantDetector;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import scala.Tuple2;
@@ -126,30 +125,26 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                 new SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser(svDiscoveryInputData.assemblyRawAlignments, svDiscoveryInputData.headerBroadcast.getValue(), true)
                         .getAlignedContigs();
 
-        discoverVariantsAndWriteVCF(svDiscoveryInputData, parsedContigAlignments);
+        // assembly-based breakpoints
+        List<VariantContext> annotatedVariants = discoverVariantsFromChimeras(svDiscoveryInputData, parsedContigAlignments);
+
+        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue();
+        SVVCFWriter.writeVCF(annotatedVariants, vcfOutputFileName, refSeqDictionary, localLogger);
     }
 
-    public static void discoverVariantsAndWriteVCF(final SvDiscoveryInputData svDiscoveryInputData,
-                                                   final JavaRDD<AlignedContig> alignedContigs) {
-
+    public static List<VariantContext> discoverVariantsFromChimeras(final SvDiscoveryInputData svDiscoveryInputData,
+                                                                    final JavaRDD<AlignedContig> alignedContigs) {
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
-        final String outputPath = svDiscoveryInputData.outputPath;
-        final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
         final JavaPairRDD<byte[], List<ChimericAlignment>> contigSeqAndChimeras =
                 alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size() > 1)
                         .mapToPair(alignedContig ->
                                 new Tuple2<>(alignedContig.contigSequence,
                                         ChimericAlignment.parseOneContig(alignedContig, referenceSequenceDictionaryBroadcast.getValue(),
-                                                true, DEFAULT_MIN_ALIGNMENT_LENGTH, CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true)));
+                                                true, DEFAULT_MIN_ALIGNMENT_LENGTH,
+                                                CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true)));
 
-        List<VariantContext> annotatedVariants = InsDelVariantDetector.produceVariantsFromSimpleChimeras(contigSeqAndChimeras, svDiscoveryInputData);
-
-        annotatedVariants = ImpreciseVariantDetector.detectImpreciseVariantsAndAddReadAnnotations(svDiscoveryInputData, annotatedVariants);
-
-        SVVCFWriter.writeVCF(annotatedVariants,
-                outputPath,
-                referenceSequenceDictionaryBroadcast.getValue(),
-                toolLogger);
+        return InsDelVariantDetector.produceVariantsFromSimpleChimeras(contigSeqAndChimeras, svDiscoveryInputData);
     }
+
 }
