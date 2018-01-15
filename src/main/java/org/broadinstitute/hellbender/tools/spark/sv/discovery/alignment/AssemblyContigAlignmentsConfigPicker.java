@@ -192,7 +192,7 @@ public class AssemblyContigAlignmentsConfigPicker {
                                               final Set<String> canonicalChromosomes,
                                               final int maxCanonicalChrAlignerScore) {
 
-        final double tigExplainQual = computeTigExplainQualOfOneAlignment(configuration, canonicalChromosomes, maxCanonicalChrAlignerScore);
+        final double tigExplainQual = computeTigExplainQualOfOnConfiguration(configuration, canonicalChromosomes, maxCanonicalChrAlignerScore);
 
         int redundancy = 0;
         for (int i = 0; i < configuration.size() -1 ; ++i) {
@@ -205,9 +205,9 @@ public class AssemblyContigAlignmentsConfigPicker {
         return tigExplainQual - redundancy;
     }
 
-    private static double computeTigExplainQualOfOneAlignment(final List<AlignmentInterval> configuration,
-                                                              final Set<String> canonicalChromosomes,
-                                                              final int maxCanonicalChrAlignerScore) {
+    private static double computeTigExplainQualOfOnConfiguration(final List<AlignmentInterval> configuration,
+                                                                 final Set<String> canonicalChromosomes,
+                                                                 final int maxCanonicalChrAlignerScore) {
         double tigExplainedQual = 0;
         for (final AlignmentInterval alignmentInterval : configuration) {
             final int len = alignmentInterval.endInAssembledContig - alignmentInterval.startInAssembledContig + 1;
@@ -235,11 +235,11 @@ public class AssemblyContigAlignmentsConfigPicker {
     private static Iterator<AlignedContig> reConstructContigFromPickedConfiguration(
             final Tuple2<String, Tuple2<byte[], List<List<AlignmentInterval>>>> nameSeqAndBestConfigurationsOfOneRead) {
 
-        final int bestConfigCount = nameSeqAndBestConfigurationsOfOneRead._2._2.size();
         final String contigName = nameSeqAndBestConfigurationsOfOneRead._1;
         final byte[] contigSeq = nameSeqAndBestConfigurationsOfOneRead._2._1;
-        if (bestConfigCount > 1) { // more than one best configuration
-            return nameSeqAndBestConfigurationsOfOneRead._2._2.stream()
+        final List<List<AlignmentInterval>> bestConfigurations = nameSeqAndBestConfigurationsOfOneRead._2._2;
+        if (bestConfigurations.size() > 1) { // more than one best configuration
+            return bestConfigurations.stream()
                     .map(configuration ->
                             new AlignedContig(contigName, contigSeq, splitGaps(configuration),
                                     true))
@@ -247,7 +247,7 @@ public class AssemblyContigAlignmentsConfigPicker {
                     .collect(Collectors.toList()).iterator();
         } else {
             return Collections.singletonList(
-                    new AlignedContig(contigName, contigSeq, splitGaps(nameSeqAndBestConfigurationsOfOneRead._2._2.get(0)),
+                    new AlignedContig(contigName, contigSeq, splitGaps(bestConfigurations.get(0)),
                             false))
                     .iterator();
         }
@@ -266,11 +266,60 @@ public class AssemblyContigAlignmentsConfigPicker {
         return numFirst.thenComparing(mismatchSecond);
     }
 
-    private static List<AlignmentInterval> splitGaps(final List<AlignmentInterval> configuration) {
-        return configuration.stream()
+    @VisibleForTesting
+    static List<AlignmentInterval> splitGaps(final List<AlignmentInterval> configuration) {
+
+        final List<Integer> blackList = new ArrayList<>(configuration.size());
+
+        for (int i = 0; i < configuration.size(); ++i) {
+            final AlignmentInterval alignment = configuration.get(i);
+            if ( alignmentContainsLargeGap(alignment) ) {
+                final Iterable<AlignmentInterval> gapSplitAlignments =
+                        ContigAlignmentsModifier.splitGappedAlignment(alignment, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY,
+                                SvCigarUtils.getUnclippedReadLength(alignment.cigarAlong5to3DirectionOfContig));
+
+                for (int j = 0; j < configuration.size(); ++j) {
+                    final AlignmentInterval other = configuration.get(j);
+                    if (j == i || AlignmentInterval.overlapOnContig(alignment, other) == 0)
+                        continue;
+
+                    if ( Utils.stream(gapSplitAlignments).anyMatch(other::containsOnRead) ) {
+                        if ( gappedAlignmentOffersBetterCoverage(alignment, other) ) {
+                            blackList.add(j);
+                        } else {
+                            blackList.add(i);
+                        }
+                    }
+                }
+            }
+        }
+
+        final List<AlignmentInterval> result = new ArrayList<>(configuration.size());
+        for (int i = 0; i < configuration.size(); ++i) {
+            if (blackList.indexOf(i) == -1)
+                result.add(configuration.get(i));
+        }
+
+        return result.stream()
                 .map(ai -> ContigAlignmentsModifier.splitGappedAlignment(ai, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY,
                         SvCigarUtils.getUnclippedReadLength(ai.cigarAlong5to3DirectionOfContig)))
                 .flatMap(Utils::stream).collect(Collectors.toList());
+    }
+
+    private static boolean alignmentContainsLargeGap(final AlignmentInterval alignment) {
+        return alignment.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
+                .anyMatch(cigarElement ->
+                        cigarElement.getOperator().isIndel() && cigarElement.getLength() >= GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY);
+    }
+
+    private static boolean gappedAlignmentOffersBetterCoverage(final AlignmentInterval gapped,
+                                                               final AlignmentInterval overlappingNonGapped) {
+        final int diff = gapped.getSizeOnRead() - overlappingNonGapped.getSizeOnRead();
+        if ( diff == 0) {
+            return gapped.alnScore > overlappingNonGapped.alnScore;
+        } else {
+            return diff > 0;
+        }
     }
 
     /**
