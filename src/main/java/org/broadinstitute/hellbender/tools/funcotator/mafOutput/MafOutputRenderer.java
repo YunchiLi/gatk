@@ -33,6 +33,8 @@ public class MafOutputRenderer extends OutputRenderer {
 
     /**
      * Default set of columns to include in this {@link MafOutputRenderer}.
+     * Order of the columns is preserved by the {@link LinkedHashMap}, while still being able to access each field via
+     * the associated key.
      */
     private static final LinkedHashMap<String, String> defaultMap = new LinkedHashMap<>();
 
