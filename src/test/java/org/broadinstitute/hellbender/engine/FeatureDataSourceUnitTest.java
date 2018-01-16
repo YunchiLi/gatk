@@ -255,7 +255,10 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
             sd = vcfReader.getFileHeader().getSequenceDictionary();
         }
 
-        // Test that we can execute an unambiguous query using any hg38 contig name against a VCF with an hg38 sequence dictionary.
+        // For completeness, test that we can execute a query using any hg38 contig name against a VCF with
+        // an hg38 sequence dictionary. Since this query is provided as a SimpleInterval, no interval query parsing
+        // or disambiguation takes place in this code path. GenomeLocParserUnitTest has a corresponding test that
+        // ensures no hg38 interval is ambiguous.
         try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(testFile)) {
             sd.getSequences().stream().forEach(
                     hg38Contig -> featureSource.query(new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())));
